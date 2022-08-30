@@ -54,4 +54,14 @@ public class Motor extends DcMotorImplEx {
             this.setPowerInternal(1);
         }
     }
+
+    @Override
+    public void setVelocity(double velocity) {
+        this.setVelocityInternal(velocity);
+        this.holdPosition();
+    }
+
+    private void setVelocityInternal(double velocity) {
+        super.setVelocity(velocity);
+    }
 }

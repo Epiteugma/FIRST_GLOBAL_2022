@@ -1,11 +1,11 @@
-package org.firstinspires.ftc.teamcode.fgc2022;
+package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.z3db0y.susanalib.Logger;
-import com.z3db0y.susanalib.Motor;
+import com.z3db0y.davidlib.
+import com.z3db0y.davidlib.Motor;
 
 @TeleOp(name = "TeleOpFGC", group = "FGC22")
 public class Drive extends LinearOpMode {
@@ -77,8 +77,22 @@ public class Drive extends LinearOpMode {
             double multiplier = distanceFromTarget * 0.3;
             Logger.addData("Multiplier" + multiplier);
             targetVeloDown = velocity * multiplier;
-//            shooterDown.setVelocity(velocity * multiplier);
+//            shooterDown.setVelocity(targetVeloDown);
         }
+    }
+
+    private void shooterControl(){
+        double shooterVeloStep = Configurable.shooterVeloStep;
+        double distanceFromTarget = Configurable.distanceFromTarget;
+        if (gamepad1.circle) {
+            controlShooter(distanceFromTarget);
+        }
+        else if(gamepad1.triangle){
+            targetVeloUp = targetVeloDown;
+            targetVeloDown += shooterVeloStep;
+        }
+        shooterUp.setVelocity(targetVeloUp);
+        shooterDown.setVelocity(targetVeloDown);
     }
 
     private void globalPowerFactorControl() {
@@ -126,20 +140,6 @@ public class Drive extends LinearOpMode {
 
     private void collectorControl() {
         collector.setPower(collectorPower);
-    }
-
-    private void shooterControl(){
-        double shooterVeloStep = Configurable.shooterVeloStep;
-        double distanceFromTarget = Configurable.distanceFromTarget;
-        if (gamepad1.circle) {
-            controlShooter(distanceFromTarget);
-        }
-        else if(gamepad1.triangle){
-            targetVeloUp = targetVeloDown;
-            targetVeloDown += shooterVeloStep;
-        }
-        shooterUp.setVelocity(targetVeloUp);
-        shooterDown.setVelocity(targetVeloDown);
     }
 
     private void communication(){
