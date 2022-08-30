@@ -23,7 +23,7 @@ public class DriveTrain {
         int pos;
         int side;
 
-        public Location(int pos, int side) {
+        Location(int pos, int side) {
             this.pos = pos;
             this.side = side;
         }
@@ -42,9 +42,10 @@ public class DriveTrain {
 
 
     public void driveRobotCentric(double forwardPower, double sidePower, double strafePower) {
-        this.motors.forEach((location, motor) -> {
+        for(DriveTrain.Location location : this.motors.keySet()) {
+            Motor motor = this.motors.get(location);
             double resultantPower = forwardPower;
-           
+
             if(location.isLeft()) resultantPower -= sidePower;
             else resultantPower += sidePower;
 
@@ -59,7 +60,7 @@ public class DriveTrain {
             ) resultantPower -= strafePower;
 
             motor.setPower(resultantPower);
-        }); 
+        }
     }
 
     public void driveRobotCentric(double forwardPower, double sidePower) {
