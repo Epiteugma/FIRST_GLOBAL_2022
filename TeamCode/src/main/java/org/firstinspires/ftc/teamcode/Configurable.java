@@ -9,11 +9,14 @@ public class Configurable {
     // Constants and ratios
     public static double collectorPower = 1;
     public static double conveyorPower = 1;
-    public static double shooterUpperPower = 0.5;
-    public static double shooterLowerPower = 0.7;
+    public static double shooterUpPower = 0.5;
+    public static double shooterDownPower = 0.7;
     public static double shooterStep = 0.1;
 
     public static double shooterVeloStep = 200;
+
+    public static double shooterGearRatio = 60/45;
+    public static double shooterTicksPerRev = 1120 * shooterGearRatio;
 
     public static double driveGearRatio = 14.0/2.0;
 
@@ -27,7 +30,7 @@ public class Configurable {
 
 
     public static double massOfTheBall = 40;
-    public static double distanceFromTarget = 100;
+    public static double distanceFromTarget = 260;
     public static double gravity = 9.81;
     public static double angleToTarget = 45;
     public static double verticalDistanceToTarget = 250;

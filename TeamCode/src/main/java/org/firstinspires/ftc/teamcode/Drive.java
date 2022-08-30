@@ -3,28 +3,27 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.z3db0y.davidlib.
-import com.z3db0y.davidlib.Motor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.z3db0y.davidlib.Logger;
 
 @TeleOp(name = "TeleOpFGC", group = "FGC22")
 public class Drive extends LinearOpMode {
-    Motor leftSide;
-    Motor rightSide;
-    Motor conveyor;
-    Motor collector;
-    Motor shooterDown;
-    Motor shooterUp;
+    DcMotorEx leftSide;
+    DcMotorEx rightSide;
+    DcMotorEx conveyor;
+    DcMotorEx collector;
+    DcMotorEx shooterDown;
+    DcMotorEx shooterUp;
     BNO055IMU imu;
 
     public void initHardware() {
-        leftSide = new Motor(hardwareMap, "leftSide");
-        rightSide = new Motor(hardwareMap, "rightSide");
-        collector = new Motor(hardwareMap, "collector");
-        conveyor = new Motor(hardwareMap, "conveyor");
+        leftSide = hardwareMap.get(DcMotorEx.class, "leftSide");
+        rightSide = hardwareMap.get(DcMotorEx.class, "rightSide");
+        collector = hardwareMap.get(DcMotorEx.class, "collector");
+        conveyor = hardwareMap.get(DcMotorEx.class, "conveyor");
 
-        shooterDown = new Motor(hardwareMap, "shooterDown");
-        shooterUp = new Motor(hardwareMap, "shooterUp");
+        shooterDown = hardwareMap.get(DcMotorEx.class, "shooterDown");
+        shooterUp = hardwareMap.get(DcMotorEx.class, "shooterUp");
 
         // imu
         BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
@@ -34,63 +33,65 @@ public class Drive extends LinearOpMode {
         imu.initialize(parameters);
 
 
-        leftSide.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        rightSide.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        leftSide.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+        rightSide.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
 
         // Directions
-        shooterUp.setDirection(Motor.Direction.REVERSE);
-        shooterDown.setDirection(Motor.Direction.REVERSE);
-        leftSide.setDirection(Motor.Direction.REVERSE);
-        rightSide.setDirection(Motor.Direction.REVERSE);
+        shooterUp.setDirection(DcMotorEx.Direction.REVERSE);
+        shooterDown.setDirection(DcMotorEx.Direction.REVERSE);
+        leftSide.setDirection(DcMotorEx.Direction.REVERSE);
+        rightSide.setDirection(DcMotorEx.Direction.REVERSE);
     }
 
     double collectorPower = Configurable.collectorPower;
     double conveyorPower = Configurable.conveyorPower;
-//    double shooterUpperPower = Configurable.shooterUpperPower;
-//    double shooterLowerPower = Configurable.shooterLowerPower;
+    double shooterUpPower = Configurable.shooterUpPower;
+    double shooterDownPower = Configurable.shooterDownPower;
     double shooterStep = Configurable.shooterStep;
     double globalPowerFactor = 0.4;
     long prevTime = 0;
     double targetVeloUp = 0;
     double targetVeloDown = 0;
 
-    private void controlShooter(double distanceFromTarget) {
+    public void controlShooter(double distanceFromTarget) {
         double massOfTheBall = Configurable.massOfTheBall;
         double gravity = Configurable.gravity;
         double angleToTarget = Configurable.angleToTarget;
         double verticalDistanceToTarget = Configurable.verticalDistanceToTarget;
         double targetAngleTan = Math.tan(Math.toRadians(angleToTarget));
-        double minimDistanceToTarget = verticalDistanceToTarget / targetAngleTan;
+        double minimumDistanceToTarget = verticalDistanceToTarget / targetAngleTan;
+        double shooterTicksPerRev = Configurable.shooterTicksPerRev;
 
         double velocity = Math.sqrt(gravity * Math.pow(distanceFromTarget, 2) * (1 + Math.pow(targetAngleTan, 2)) /
                 2 * (distanceFromTarget * targetAngleTan - verticalDistanceToTarget));
         // D * targetAngleTan has to be bigger/equal(risky) than verticalDistanceToTarget
+        velocity = velocity / shooterTicksPerRev;
+
+        Logger.addData("Calculated motor velocity" + velocity);
 
         targetVeloUp = velocity;
-        if ( distanceFromTarget >= minimDistanceToTarget) {
+        if ( distanceFromTarget >= minimumDistanceToTarget) {
             targetVeloDown = velocity;
         }
-//            shooterUp.setVelocity(velocity);
-//            shooterDown.setVelocity(velocity);
         else {
-//            shooterUp.setVelocity(velocity);
             double multiplier = distanceFromTarget * 0.3;
             Logger.addData("Multiplier" + multiplier);
             targetVeloDown = velocity * multiplier;
-//            shooterDown.setVelocity(targetVeloDown);
         }
     }
 
     private void shooterControl(){
         double shooterVeloStep = Configurable.shooterVeloStep;
         double distanceFromTarget = Configurable.distanceFromTarget;
-        if (gamepad1.circle) {
+//        if (gamepad1.circle) {
             controlShooter(distanceFromTarget);
-        }
-        else if(gamepad1.triangle){
+//        }
+        if(gamepad1.triangle){
             targetVeloUp = targetVeloDown;
             targetVeloDown += shooterVeloStep;
         }
+        shooterUp.setPower(shooterUpPower);
+        shooterDown.setPower(shooterDownPower);
         shooterUp.setVelocity(targetVeloUp);
         shooterDown.setVelocity(targetVeloDown);
     }
@@ -126,10 +127,8 @@ public class Drive extends LinearOpMode {
     }
 
     private void conveyorControl(){
-        Logger.addData("UpVelo" + shooterUp.getVelocity());
-        Logger.addData("DownVelo" + shooterDown.getVelocity());
-        double upVelo = shooterUp.getVelocity();
-        double downVelo = shooterDown.getVelocity();
+        double upVelo = Math.abs(shooterUp.getVelocity());
+        double downVelo = Math.abs(shooterDown.getVelocity());
         if (Math.abs(upVelo - targetVeloUp) > shooterStep && Math.abs(downVelo - targetVeloDown) > shooterStep) {
             conveyor.setPower(conveyorPower);
         }
@@ -155,14 +154,22 @@ public class Drive extends LinearOpMode {
         Logger.addData("|--  Left Side power: " + leftSide.getPower());
         Logger.addData("|--  Conveyor power: " + conveyor.getPower());
         Logger.addData("|--  Collector power: " + collector.getPower());
+        Logger.addData("|--  ShooterUp power: " + shooterUp.getPower());
+        Logger.addData("|--  ShooterDown power: " + shooterDown.getPower());
+        Logger.addData("|--  ShooterUp velocity: " + shooterUp.getVelocity());
+        Logger.addData("|--  ShooterDown velocity: " + shooterDown.getVelocity());
         Logger.addData("Ticks:");
         Logger.addData("|--  RightSide ticks: " + rightSide.getCurrentPosition());
         Logger.addData("|--  LeftSide ticks: " + leftSide.getCurrentPosition());
         Logger.addData("|--  Conveyor ticks: " + conveyor.getTargetPosition());
         Logger.addData("|--  collector ticks: " + collector.getCurrentPosition());
+        Logger.addData("|--  ShooterUp ticks: " + shooterUp.getCurrentPosition());
+        Logger.addData("|--  ShooterDown ticks: " + shooterDown.getCurrentPosition());
         Logger.addData("Info (usually variables):");
         Logger.addData("|--  shooter step: " + shooterStep);
         Logger.addData("|--  prevTime: " + prevTime);
+        Logger.addData("|--  ShooterUp target velocity: " + targetVeloUp);
+        Logger.addData("|--  ShooterDown target velocity: " + targetVeloDown);
         Logger.update();
     }
 
