@@ -6,6 +6,8 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.z3db0y.davidlib.Logger;
 
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+
 @TeleOp(name = "TeleOpFGC", group = "FGC22")
 public class Drive extends LinearOpMode {
     DcMotorEx leftSide;
@@ -45,55 +47,57 @@ public class Drive extends LinearOpMode {
 
     double collectorPower = Configurable.collectorPower;
     double conveyorPower = Configurable.conveyorPower;
-    double shooterUpPower = Configurable.shooterUpPower;
-    double shooterDownPower = Configurable.shooterDownPower;
     double shooterStep = Configurable.shooterStep;
     double globalPowerFactor = 0.4;
     long prevTime = 0;
-    double targetVeloUp = 0;
-    double targetVeloDown = 0;
+    double targetVeloRadUp = 0;
+    double targetVeloRadDown = 0;
 
-    public void controlShooter(double distanceFromTarget) {
+    public void controlShooter(double horizontalDistanceToTarget) {
         double massOfTheBall = Configurable.massOfTheBall;
+        double shooterGearRatio = Configurable.shooterGearRatio;
+        double shooterWheelRadius = Configurable.shooterWheelRadius;
         double gravity = Configurable.gravity;
         double angleToTarget = Configurable.angleToTarget;
         double verticalDistanceToTarget = Configurable.verticalDistanceToTarget;
         double targetAngleTan = Math.tan(Math.toRadians(angleToTarget));
-        double minimumDistanceToTarget = verticalDistanceToTarget / targetAngleTan;
-        double shooterTicksPerRev = Configurable.shooterTicksPerRev;
+        double minimumDistanceToTarget = horizontalDistanceToTarget / targetAngleTan;
+//        double shooterTicksPerRev = Configurable.shooterTicksPerRev;
+        double sqrdHorizontalDistanceToTarget = Math.pow(horizontalDistanceToTarget, 2);
+        double sqrdTargetAngleTan = Math.pow(targetAngleTan, 2);
 
-        double velocity = Math.sqrt(gravity * Math.pow(distanceFromTarget, 2) * (1 + Math.pow(targetAngleTan, 2)) /
-                2 * (distanceFromTarget * targetAngleTan - verticalDistanceToTarget));
+        double targetVelo = Math.sqrt(gravity * sqrdHorizontalDistanceToTarget * (1 + sqrdTargetAngleTan) /
+                (2 * (horizontalDistanceToTarget * targetAngleTan - verticalDistanceToTarget)));
         // D * targetAngleTan has to be bigger/equal(risky) than verticalDistanceToTarget
-        velocity = velocity / shooterTicksPerRev;
+        double targetVeloRad = targetVelo / shooterGearRatio / shooterWheelRadius;
 
-        Logger.addData("Calculated motor velocity" + velocity);
+        Logger.addData("Calculated velocity in radians" + targetVeloRad + "with shooterWheelRadius" + shooterWheelRadius);
 
-        targetVeloUp = velocity;
-        if ( distanceFromTarget >= minimumDistanceToTarget) {
-            targetVeloDown = velocity;
+        targetVeloRadUp = targetVeloRad;
+        if ( horizontalDistanceToTarget <= minimumDistanceToTarget) {
+            double multiplier = horizontalDistanceToTarget * 0.001; // need a formula for needed height correction compensating in shooterUpVeloRad
+            Logger.addData("Multiplier" + multiplier);
+            targetVeloRadDown = targetVeloRad * multiplier;
         }
         else {
-            double multiplier = distanceFromTarget * 0.3;
-            Logger.addData("Multiplier" + multiplier);
-            targetVeloDown = velocity * multiplier;
+            targetVeloRadDown = targetVeloRad;
         }
     }
 
     private void shooterControl(){
-        double shooterVeloStep = Configurable.shooterVeloStep;
-        double distanceFromTarget = Configurable.distanceFromTarget;
+        double shooterVeloRadStep = Configurable.shooterVeloRadStep;
+        double distanceFromTarget = Configurable.horizontalDistanceToTarget;
 //        if (gamepad1.circle) {
             controlShooter(distanceFromTarget);
 //        }
         if(gamepad1.triangle){
-            targetVeloUp = targetVeloDown;
-            targetVeloDown += shooterVeloStep;
+            targetVeloRadUp = targetVeloRadDown;
+            targetVeloRadDown += shooterVeloRadStep;
         }
-        shooterUp.setPower(shooterUpPower);
-        shooterDown.setPower(shooterDownPower);
-        shooterUp.setVelocity(targetVeloUp);
-        shooterDown.setVelocity(targetVeloDown);
+//        shooterUp.setPower(shooterUpPower);
+//        shooterDown.setPower(shooterDownPower);
+        shooterUp.setVelocity(targetVeloRadUp, AngleUnit.RADIANS);
+        shooterDown.setVelocity(targetVeloRadDown, AngleUnit.RADIANS);
     }
 
     private void globalPowerFactorControl() {
@@ -129,7 +133,9 @@ public class Drive extends LinearOpMode {
     private void conveyorControl(){
         double upVelo = Math.abs(shooterUp.getVelocity());
         double downVelo = Math.abs(shooterDown.getVelocity());
-        if (Math.abs(upVelo - targetVeloUp) > shooterStep && Math.abs(downVelo - targetVeloDown) > shooterStep) {
+        Logger.addData(upVelo);
+        Logger.addData(downVelo);
+        if (Math.abs(upVelo - targetVeloRadUp) < shooterStep && Math.abs(downVelo - targetVeloRadDown) < shooterStep && upVelo > 0 && downVelo > 0) {
             conveyor.setPower(conveyorPower);
         }
         else {
@@ -156,8 +162,8 @@ public class Drive extends LinearOpMode {
         Logger.addData("|--  Collector power: " + collector.getPower());
         Logger.addData("|--  ShooterUp power: " + shooterUp.getPower());
         Logger.addData("|--  ShooterDown power: " + shooterDown.getPower());
-        Logger.addData("|--  ShooterUp velocity: " + shooterUp.getVelocity());
-        Logger.addData("|--  ShooterDown velocity: " + shooterDown.getVelocity());
+        Logger.addData("|--  ShooterUp velocity in radians: " + shooterUp.getVelocity(AngleUnit.RADIANS));
+        Logger.addData("|--  ShooterDown velocity in radians: " + shooterDown.getVelocity(AngleUnit.RADIANS));
         Logger.addData("Ticks:");
         Logger.addData("|--  RightSide ticks: " + rightSide.getCurrentPosition());
         Logger.addData("|--  LeftSide ticks: " + leftSide.getCurrentPosition());
@@ -168,8 +174,8 @@ public class Drive extends LinearOpMode {
         Logger.addData("Info (usually variables):");
         Logger.addData("|--  shooter step: " + shooterStep);
         Logger.addData("|--  prevTime: " + prevTime);
-        Logger.addData("|--  ShooterUp target velocity: " + targetVeloUp);
-        Logger.addData("|--  ShooterDown target velocity: " + targetVeloDown);
+        Logger.addData("|--  ShooterUp target velocity in radians: " + targetVeloRadUp);
+        Logger.addData("|--  ShooterDown target velocity in radians: " + targetVeloRadDown);
         Logger.update();
     }
 

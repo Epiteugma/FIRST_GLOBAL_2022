@@ -9,31 +9,28 @@ public class Configurable {
     // Constants and ratios
     public static double collectorPower = 1;
     public static double conveyorPower = 1;
-    public static double shooterUpPower = 0.5;
-    public static double shooterDownPower = 0.7;
-    public static double shooterStep = 0.1;
-
-    public static double shooterVeloStep = 200;
-
-    public static double shooterGearRatio = 60/45;
-    public static double shooterTicksPerRev = 1120 * shooterGearRatio;
-
-    public static double driveGearRatio = 14.0/2.0;
 
     // Wheel dimensions and distances
     // Old Wheels
     // public static double wheelRadius = 7/2;
     // New wheels
-    public static double wheelRadius = 7.5;
-    public static double wheelCircumference = 2 * Math.PI * wheelRadius;
-    public static double centerToWheel = 21;
+//    public static double wheelRadius = 7.5;
+//    public static double wheelCircumference = 2 * Math.PI * wheelRadius;
+//    public static double centerToWheel = 21;
+//    public static double driveGearRatio = 14.0/2.0;
 
 
     public static double massOfTheBall = 40;
-    public static double distanceFromTarget = 260;
+    public static double horizontalDistanceToTarget = 260;
     public static double gravity = 9.81;
-    public static double angleToTarget = 45;
-    public static double verticalDistanceToTarget = 250;
-
+    public static double angleToTarget = 65.0;
+    public static double heightOfTarget = 250;
+    public static double groundToShooterCenter = 28;
+    public static double verticalDistanceToTarget = heightOfTarget - groundToShooterCenter;
+    public static double shooterWheelRadius = 2.25;
+    public static double shooterStep = 0.1;
+    public static double shooterVeloRadStep = 2;
+    public static double shooterGearRatio = 135.0/30.0;
+    public static double shooterTicksPerRev = 1120 * shooterGearRatio;
 
 }
