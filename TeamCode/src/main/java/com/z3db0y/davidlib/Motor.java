@@ -1,21 +1,24 @@
 package com.z3db0y.davidlib;
 
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorController;
 import com.qualcomm.robotcore.hardware.DcMotorImplEx;
+import com.qualcomm.robotcore.hardware.HardwareMap;
 
-public class Motor extends DcMotorImplEx {
+public class Motor {
     boolean holdPosition = false;
-    RunMode runMode;
-    RunMode lastRunMode;
+    DcMotor motor;
+    DcMotor.RunMode runMode;
+    DcMotor.RunMode lastRunMode;
 
-    public Motor(DcMotorController controller, int portNumber) {
-        super(controller, portNumber);
+    public Motor(HardwareMap hardwareMap, String motorName) {
+        this.motor = hardwareMap.get(DcMotor.class, "motorName");
     }
 
     public void runToPosition(int targetPosition, double power) {
         this.lastRunMode = this.runMode;
         while(Math.abs(targetPosition - this.getCurrentPosition()) > 0) {
-            this.setMode(RunMode.RUN_USING_ENCODER);
+            this.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             this.setPower(power);
         }
         this.setMode(this.lastRunMode);
@@ -24,7 +27,7 @@ public class Motor extends DcMotorImplEx {
 
     public void runToPositionAsync(int targetPosition, double power) {
         this.setTargetPosition(targetPosition);
-        super.setMode(RunMode.RUN_TO_POSITION);
+        this.motor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         this.setPower(power);
     }
 
@@ -37,14 +40,29 @@ public class Motor extends DcMotorImplEx {
         return this.holdPosition;
     }
 
-    @Override
     public void setPower(double power) {
         this.setPowerInternal(power);
         this.holdPosition();
     }
 
     private void setPowerInternal(double power) {
-        super.setPower(power);
+        this.motor.setPower(power);
+    }
+
+    public double getPower() {
+        return this.motor.getPower();
+    }
+
+    public void setTargetPosition(int ticks) {
+        this.motor.setTargetPosition(ticks);
+    }
+
+    public int getCurrentPosition() {
+        return this.motor.getCurrentPosition();
+    }
+
+    public void setMode(DcMotor.RunMode runMode) {
+        this.motor.setMode(runMode);
     }
 
     private void holdPosition() {
