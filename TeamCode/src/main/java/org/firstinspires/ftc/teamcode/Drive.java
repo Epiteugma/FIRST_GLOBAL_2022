@@ -4,9 +4,14 @@ import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.hardware.PIDCoefficients;
 import com.z3db0y.davidlib.Logger;
 
+import org.firstinspires.ftc.robotcore.external.navigation.Acceleration;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 
 @TeleOp(name = "TeleOpFGC", group = "FGC22")
 public class Drive extends LinearOpMode {
@@ -41,43 +46,85 @@ public class Drive extends LinearOpMode {
         // Directions
         shooterUp.setDirection(DcMotorEx.Direction.REVERSE);
         shooterDown.setDirection(DcMotorEx.Direction.REVERSE);
-        leftSide.setDirection(DcMotorEx.Direction.REVERSE);
-        rightSide.setDirection(DcMotorEx.Direction.REVERSE);
+        leftSide.setDirection(DcMotorEx.Direction.FORWARD);
+        rightSide.setDirection(DcMotorEx.Direction.FORWARD);
     }
 
     double collectorPower = Configurable.collectorPower;
     double conveyorPower = Configurable.conveyorPower;
     double shooterStep = Configurable.shooterStep;
-    double globalPowerFactor = 0.4;
+    double shooterMarginOfError = Configurable.shooterMarginOfError;
+    double globalPowerFactor = 0.7;
     long prevTime = 0;
     double targetVeloRadUp = 0;
     double targetVeloRadDown = 0;
 
-    public void controlShooter(double horizontalDistanceToTarget) {
-        double massOfTheBall = Configurable.massOfTheBall;
+    //setvelocitypid
+    public static PIDCoefficients pidCoeffs = new PIDCoefficients(0, 0, 0); //PID coefficients that need to be tuned probably through FTC dashboard
+    public PIDCoefficients pidGains = new PIDCoefficients(0, 0, 0); //PID gains which we will define later in the process
+    ElapsedTime PIDTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS); //timer
+    double lastError = 0;
+    double integral = 0;
+
+    public void setVelocityRadPID(DcMotorEx motor, double targetVelocityRad){
+        PIDTimer.reset(); // resets the timer
+
+        double currentVelocityRad = motor.getVelocity(AngleUnit.RADIANS);
+        //P
+        double error = targetVelocityRad - currentVelocityRad; //pretty self explanatory--just finds the error
+        pidGains.p = error * pidCoeffs.p;
+        // acts directly on the error; p-coefficient identifies how much to act upon it
+        // p-coefficient (very low = not much effect; very high = lots of overshoot/oscillations)
+        //I
+        integral += error * PIDTimer.time();
+        pidGains.i = integral * pidCoeffs.i;
+        // multiplies integrated error by i-coefficient constant
+        // i-coefficient (very high = fast reaction to steady-state error but lots of overshoot; very low = slow reaction to steady-state error)
+        // for velocity, because friction isn't a big issue, only reason why you would need i would be for insufficient correction from p-gain
+        //continuously sums error accumulation to prevent steady-state error (friction, not enough p-gain to cause change)
+        //D
+        double deltaError = error - lastError; //finds how the error changes from the previous cycle
+        double derivative = deltaError / PIDTimer.time(); //deltaError/time gives the rate of change (sensitivity of the system)
+        pidGains.d = derivative * pidCoeffs.d;
+        // multiplies derivative by d-coefficient
+        // d-coefficient (very high = increased volatility; very low = too little effect on dampening system)
+
+        motor.setVelocity(pidGains.p + pidGains.i + pidGains.d + targetVelocityRad, AngleUnit.RADIANS);
+        //adds up the P I D gains accumulating for the targetVelocity bias
+
+        lastError = error;
+        //makes our current error as our new last error for the next cycle
+    }
+
+    public void shooterCalculator(double horizontalDistanceToTarget) {
         double shooterGearRatio = Configurable.shooterGearRatio;
         double shooterWheelRadius = Configurable.shooterWheelRadius;
-        double gravity = Configurable.gravity;
-        double angleToTarget = Configurable.angleToTarget;
+        double shooterX = Configurable.shooterAngleOnRobot;
         double verticalDistanceToTarget = Configurable.verticalDistanceToTarget;
-        double targetAngleTan = Math.tan(Math.toRadians(angleToTarget));
-        double minimumDistanceToTarget = horizontalDistanceToTarget / targetAngleTan;
-//        double shooterTicksPerRev = Configurable.shooterTicksPerRev;
+        double controlHubX= 90 - Math.abs(imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).secondAngle); // control hub is X degrees off the way it is placed
+        double angleToTarget = controlHubX + shooterX;
+        double angleToTargetTan = Math.tan(Math.toRadians(angleToTarget));
+        double minimumDistanceToTarget = horizontalDistanceToTarget / angleToTargetTan;
         double sqrdHorizontalDistanceToTarget = Math.pow(horizontalDistanceToTarget, 2);
-        double sqrdTargetAngleTan = Math.pow(targetAngleTan, 2);
+        double sqrdTargetAngleTan = Math.pow(angleToTargetTan, 2);
+        Acceleration gravity = imu.getGravity();
+        double gravityMagnitude = Math.sqrt(Math.pow(gravity.xAccel, 2) + Math.pow(gravity.yAccel, 2) + Math.pow(gravity.zAccel, 2));
 
-        double targetVelo = Math.sqrt(gravity * sqrdHorizontalDistanceToTarget * (1 + sqrdTargetAngleTan) /
-                (2 * (horizontalDistanceToTarget * targetAngleTan - verticalDistanceToTarget)));
-        // D * targetAngleTan has to be bigger/equal(risky) than verticalDistanceToTarget
+        Logger.addData("Control Hub Angle" + controlHubX + "Angle to Target" + angleToTarget);
+
+        double targetVelo = Math.sqrt(gravityMagnitude * sqrdHorizontalDistanceToTarget * (1 + sqrdTargetAngleTan) /
+                (2 * (horizontalDistanceToTarget * angleToTargetTan - verticalDistanceToTarget)));
         double targetVeloRad = targetVelo / shooterGearRatio / shooterWheelRadius;
 
-        Logger.addData("Calculated velocity in radians" + targetVeloRad + "with shooterWheelRadius" + shooterWheelRadius);
+        Logger.addData("targetVelo / shooterGearRatio / shooterWheelRadius: " + targetVelo + "/" + shooterGearRatio + "/" + shooterWheelRadius + "=" + targetVeloRad);
 
         targetVeloRadUp = targetVeloRad;
-        if ( horizontalDistanceToTarget <= minimumDistanceToTarget) {
-            double multiplier = horizontalDistanceToTarget * 0.001; // need a formula for needed height correction compensating in shooterUpVeloRad
-            Logger.addData("Multiplier" + multiplier);
-            targetVeloRadDown = targetVeloRad * multiplier;
+        // D * targetAngleTan has to be bigger/equal(risky) than verticalDistanceToTarget
+        if ( horizontalDistanceToTarget < minimumDistanceToTarget) {
+            double radsAdditionRange = Configurable.radsAdditionRange;
+            double radsDivider = minimumDistanceToTarget / radsAdditionRange;
+            double radIncrease = horizontalDistanceToTarget / radsDivider;
+            targetVeloRadDown = targetVeloRad + radIncrease;
         }
         else {
             targetVeloRadDown = targetVeloRad;
@@ -85,19 +132,22 @@ public class Drive extends LinearOpMode {
     }
 
     private void shooterControl(){
-        double shooterVeloRadStep = Configurable.shooterVeloRadStep;
+        double shooterStep = Configurable.shooterStep;
         double distanceFromTarget = Configurable.horizontalDistanceToTarget;
-//        if (gamepad1.circle) {
-            controlShooter(distanceFromTarget);
-//        }
-        if(gamepad1.triangle){
-            targetVeloRadUp = targetVeloRadDown;
-            targetVeloRadDown += shooterVeloRadStep;
+        shooterCalculator(distanceFromTarget);
+        if (gamepad1.circle) {
+            shooterCalculator(distanceFromTarget);
         }
-//        shooterUp.setPower(shooterUpPower);
-//        shooterDown.setPower(shooterDownPower);
-        shooterUp.setVelocity(targetVeloRadUp, AngleUnit.RADIANS);
-        shooterDown.setVelocity(targetVeloRadDown, AngleUnit.RADIANS);
+        else if(gamepad1.triangle){
+            targetVeloRadUp += shooterStep;
+            targetVeloRadDown += shooterStep;
+        }
+        else if(gamepad1.cross){
+            targetVeloRadUp -= shooterStep;
+            targetVeloRadDown -= shooterStep;
+        }
+        setVelocityRadPID(shooterUp, targetVeloRadUp);
+        setVelocityRadPID(shooterDown, targetVeloRadDown);
     }
 
     private void globalPowerFactorControl() {
@@ -131,11 +181,11 @@ public class Drive extends LinearOpMode {
     }
 
     private void conveyorControl(){
-        double upVelo = Math.abs(shooterUp.getVelocity());
-        double downVelo = Math.abs(shooterDown.getVelocity());
+        double upVelo = Math.abs(shooterUp.getVelocity(AngleUnit.RADIANS));
+        double downVelo = Math.abs(shooterDown.getVelocity(AngleUnit.RADIANS));
         Logger.addData(upVelo);
         Logger.addData(downVelo);
-        if (Math.abs(upVelo - targetVeloRadUp) < shooterStep && Math.abs(downVelo - targetVeloRadDown) < shooterStep && upVelo > 0 && downVelo > 0) {
+        if (Math.abs(upVelo - targetVeloRadUp) < shooterMarginOfError && Math.abs(downVelo - targetVeloRadDown) < shooterMarginOfError && upVelo > 0 && downVelo > 0) {
             conveyor.setPower(conveyorPower);
         }
         else {
