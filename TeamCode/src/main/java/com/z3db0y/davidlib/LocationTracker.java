@@ -59,7 +59,7 @@ public class LocationTracker {
         int rightTickAverage = (int) (rightTickSum / rightMotors.size());
 
         int sideTickDelta = leftTickAverage - rightTickAverage;
-        int ticksPerDegree = (int) (this.robotWidth / 360 / this.wheelRadius / ((leftMotors.size() + rightMotors.size()) / 2));
+        double ticksPerDegree = this.robotWidth / 360 / this.wheelRadius / ((leftMotors.size() + rightMotors.size()) / 2);
 
         double robotRotation = sideTickDelta / ticksPerDegree;
         while(robotRotation > 360) robotRotation -= 360;

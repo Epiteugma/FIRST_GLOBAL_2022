@@ -12,7 +12,7 @@ public class Motor {
     DcMotor.RunMode lastRunMode;
 
     public Motor(HardwareMap hardwareMap, String motorName) {
-        this.motor = hardwareMap.get(DcMotor.class, "motorName");
+        this.motor = hardwareMap.get(DcMotor.class, motorName);
     }
 
     public void runToPosition(int targetPosition, double power) {
