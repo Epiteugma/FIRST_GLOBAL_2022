@@ -65,21 +65,21 @@ public class Drive extends LinearOpMode {
     //setvelocitypid
     PIDFCoefficients pidfCoeffs = Configurable.pidfCoeffs;
     public PIDFCoefficients pidfGains = new PIDFCoefficients(0, 0, 0, 0); // PID gains which we will define later in the process
-    ElapsedTime PIDTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS); //timer
+    ElapsedTime PIDFTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS); //timer
     double lastError = 0;
     double integral = 0;
 
     public void setVelocityRadPID(DcMotorEx motor, double targetVelocityRad){
-        PIDTimer.reset(); // resets the timer
+        PIDFTimer.reset(); // resets the timer
 
         double currentVelocityRad = motor.getVelocity(AngleUnit.RADIANS);
         //P
-        double error = targetVelocityRad - currentVelocityRad; //pretty self explanatory--just finds the error
+        double error = targetVelocityRad - currentVelocityRad; //pretty self explanatory -> just finds the error
         pidfGains.p = error * pidfCoeffs.p;
         // acts directly on the error; p-coefficient identifies how much to act upon it
         // p-coefficient (very low = not much effect; very high = lots of overshoot/oscillations)
         //I
-        integral += error * PIDTimer.time();
+        integral += error * PIDFTimer.time();
         pidfGains.i = integral * pidfCoeffs.i;
         // multiplies integrated error by i-coefficient constant
         // i-coefficient (very high = fast reaction to steady-state error but lots of overshoot; very low = slow reaction to steady-state error)
@@ -87,18 +87,19 @@ public class Drive extends LinearOpMode {
         //continuously sums error accumulation to prevent steady-state error (friction, not enough p-gain to cause change)
         //D
         double deltaError = error - lastError; //finds how the error changes from the previous cycle
-        double derivative = deltaError / PIDTimer.time(); //deltaError/time gives the rate of change (sensitivity of the system)
+        double derivative = deltaError / PIDFTimer.time(); //deltaError/time gives the rate of change (sensitivity of the system)
         pidfGains.d = derivative * pidfCoeffs.d;
         // multiplies derivative by d-coefficient
         // d-coefficient (very high = increased volatility; very low = too little effect on dampening system)
-
-        double velocity = pidfGains.p + pidfGains.i + pidfGains.d + (pidfGains.f * currentVelocityRad); //adds the three gains together to get the final velocity
+        // F
+        double correction = pidfGains.f * currentVelocityRad;
+        double velocity = pidfGains.p + pidfGains.i + pidfGains.d + correction; //adds the three gains together to get the final velocity
 
         motor.setVelocity(velocity, AngleUnit.RADIANS);
-        //adds up the P I D gains accumulating for the targetVelocity bias
+        //adds up the P I D F gains accumulating for the targetVelocity bias
 
         lastError = error;
-        //makes our current error as our new last error for the next cycle
+        // makes our current error as our new last error for the next cycle
     }
 
     public void shooterCalculator(DcMotorEx motor, double horizontalDistanceToTarget) {
@@ -126,6 +127,8 @@ public class Drive extends LinearOpMode {
 
         FtcDashboard.getInstance().getTelemetry().addData("shooterDown velocity", shooterDown.getVelocity(AngleUnit.RADIANS));
         FtcDashboard.getInstance().getTelemetry().addData("shooterUp velocity", shooterUp.getVelocity(AngleUnit.RADIANS));
+        FtcDashboard.getInstance().getTelemetry().addData("targetVeloRad", targetVeloRad);
+
 
         Logger.addData("targetVelo / shooterGearRatio / shooterWheelRadius: " + targetVelo + "/" + shooterGearRatio + "/" + shooterWheelRadius + "=" + targetVeloRad);
 
