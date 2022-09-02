@@ -26,17 +26,13 @@ public class Vector {
         Vector src = this;
         double toX = radToDeg(Math.atan(
             (dst.X - src.X) /
-            (dst.Y - src.Y)
+            (dst.Z - src.Z)
         ));
         double toY = radToDeg(Math.atan(
             (dst.Y - src.Y) /
             (dst.Z - src.Z)
         ));
-        double toZ = radToDeg(Math.atan(
-            (dst.Z - src.Z) /
-            (dst.Y - src.Y)
-        ));
-        return Arrays.asList(toX, toY, toZ);
+        return Arrays.asList(toX, toY);
     }
 
     public List<Double> distanceTo(Vector dst) {

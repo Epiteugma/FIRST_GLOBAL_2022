@@ -1,5 +1,7 @@
 package com.z3db0y.davidlib;
 
+import org.firstinspires.ftc.robotcore.external.Telemetry;
+
 import java.util.*;
 
 public class LocationTracker {
@@ -9,13 +11,17 @@ public class LocationTracker {
     double robotWidth;
     double wheelRadius;
     Vector currentLocation = new Vector(0, 0, 0);
-    int lastTickAverage = 0;
+    Telemetry telemetry;
+    int lastLeftTickSum = 0;
+    int lastRightTickSum = 0;
+    double lastRobotAngle = 0;
 
-    public class Parameters {
+    public static class Parameters {
         public DriveTrain driveTrain;
         public int motorTicksPerRevolution;
         public double robotWidth;
         public double wheelRadius;
+        public Telemetry telemetry;
     }
 
     public void initialize(Parameters params) {
@@ -28,18 +34,17 @@ public class LocationTracker {
         this.motorTicksPerRevolution = params.motorTicksPerRevolution;
         this.robotWidth = params.robotWidth;
         this.wheelRadius = params.wheelRadius;
+        this.telemetry = params.telemetry;
     }
 
     public Vector updatePosition() {
         if(!this.isInitialized) return null;
 
-        // TODO: check location tracking
         List<Motor> leftMotors = new ArrayList<>();
         List<Motor> rightMotors = new ArrayList<>();
-        
+
         int leftTickSum = 0;
         int rightTickSum = 0;
-        int tickSum = 0;
 
         for(DriveTrain.Location location : this.driveTrain.getMotors().keySet()) {
             Motor motor = this.driveTrain.getMotors().get(location);
@@ -51,41 +56,52 @@ public class LocationTracker {
                 rightTickSum += motor.getCurrentPosition();
                 rightMotors.add(motor);
             }
-
-            tickSum += motor.getCurrentPosition();
         }
 
-        int leftTickAverage = (int) (leftTickSum / leftMotors.size());
-        int rightTickAverage = (int) (rightTickSum / rightMotors.size());
+        int tickSum = (leftTickSum + rightTickSum) - (lastLeftTickSum + lastRightTickSum);
 
-        int sideTickDelta = leftTickAverage - rightTickAverage;
-        double ticksPerDegree = this.robotWidth / 360 / this.wheelRadius / ((leftMotors.size() + rightMotors.size()) / 2);
+        int leftTickAverage = (leftTickSum - lastLeftTickSum) / leftMotors.size();
+        int rightTickAverage = (rightTickSum - lastRightTickSum) / rightMotors.size();
+        int tickAverage = tickSum / (leftMotors.size() + rightMotors.size());
 
-        double robotRotation = sideTickDelta / ticksPerDegree;
-        while(robotRotation > 360) robotRotation -= 360;
+        int sideTickDelta = rightTickAverage - leftTickAverage;
+        double distancePer90Degrees = 2 * Math.PI * this.robotWidth / 4;
+        double cmPerRevolution = 2 * Math.PI * this.wheelRadius;
+        double ticksPerCM = this.motorTicksPerRevolution / cmPerRevolution;
+        double revolutionsPerDegree = distancePer90Degrees / cmPerRevolution / 90;
+        double ticksPerDegree = this.motorTicksPerRevolution * revolutionsPerDegree;
 
-        double rotation180 = robotRotation;
+        double robotAngle = lastRobotAngle - sideTickDelta / ticksPerDegree;
+        while (robotAngle < 0) robotAngle += 360;
+        while (robotAngle > 360) robotAngle -= 360;
+
+        double rotation180 = robotAngle;
         if(rotation180 > 180) rotation180 = 360 - rotation180;
 
-        double rotation180Shifted = Math.abs(robotRotation - 90);
+        double rotation180Shifted = Math.abs(robotAngle - 90);
         if(rotation180Shifted > 180) rotation180Shifted = 360 - rotation180Shifted;
 
         double xMultiplier = 1 - rotation180/90;
         double zMultiplier = 1 - rotation180Shifted/90;
 
-        int tickAverage = tickSum / (leftMotors.size() + rightMotors.size());
-        int ticksMoved = tickAverage;
-        if(lastTickAverage != 0) {
-            ticksMoved -= lastTickAverage;
+        this.currentLocation.X += tickAverage / ticksPerCM * xMultiplier;
+        this.currentLocation.Z += tickAverage / ticksPerCM * zMultiplier;
+
+        if(this.telemetry != null) {
+            this.telemetry.addData("X", this.currentLocation.X);
+            this.telemetry.addData("Z", this.currentLocation.Z);
+            this.telemetry.addData("X Multiplier", xMultiplier);
+            this.telemetry.addData("Z Multiplier", zMultiplier);
+            this.telemetry.addData("Left Tick Average", leftTickAverage);
+            this.telemetry.addData("Right Tick Average", rightTickAverage);
+            this.telemetry.addData("Tick Average", tickAverage);
+            this.telemetry.addData("Robot Angle", robotAngle);
+            this.telemetry.update();
         }
 
-        int revolutionsMoved = ticksMoved / this.motorTicksPerRevolution;
-        double distanceMoved = revolutionsMoved * (2 * Math.PI * this.wheelRadius);
-
-        this.currentLocation.X += distanceMoved * xMultiplier;
-        this.currentLocation.Z += distanceMoved * zMultiplier;
-
-        lastTickAverage = tickAverage;
+        lastLeftTickSum = leftTickSum;
+        lastRightTickSum = rightTickSum;
+        lastRobotAngle = robotAngle;
         return this.currentLocation;
     }
 

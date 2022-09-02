@@ -3,6 +3,7 @@ package com.z3db0y.davidlib;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorController;
 import com.qualcomm.robotcore.hardware.DcMotorImplEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 public class Motor {
@@ -71,5 +72,9 @@ public class Motor {
             this.setTargetPosition(this.getCurrentPosition());
             this.setPowerInternal(1);
         }
+    }
+
+    public void setDirection(DcMotor.Direction direction) {
+        this.motor.setDirection(direction);
     }
 }
