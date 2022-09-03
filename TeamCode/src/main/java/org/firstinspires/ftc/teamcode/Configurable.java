@@ -22,7 +22,8 @@ public class Configurable {
 //    public static double driveGearRatio = 14.0/2.0;
 
 
-    public static PIDFCoefficients pidfCoeffs = new PIDFCoefficients(0.3, 0.05, 0.3, 3); // PID coefficients that need to be tuned probably through FTC dashboard
+    public static PIDFCoefficients shooterUpCoeffs = new PIDFCoefficients(0.3, 0.05, 0.3, 3); // PID coefficients that need to be tuned probably through FTC dashboard
+    public static PIDFCoefficients shooterDownCoeffs = new PIDFCoefficients(0.3, 0.05, 0.3, 3); // PID coefficients that need to be tuned probably through FTC dashboard
 
     public static double heightOfTarget = 250;
     public static double horizontalDistanceToTarget = 260;

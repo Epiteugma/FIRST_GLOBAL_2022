@@ -1,25 +1,30 @@
 package com.z3db0y.davidlib;
 
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorController;
+import com.acmerobotics.dashboard.config.Config;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorImplEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.teamcode.Configurable;
+
+@Config
 public class Motor {
     boolean holdPosition = false;
-    DcMotor motor;
-    DcMotor.RunMode runMode;
-    DcMotor.RunMode lastRunMode;
+    DcMotorEx motor;
+    DcMotorEx.RunMode runMode;
+    DcMotorEx.RunMode lastRunMode;
 
     public Motor(HardwareMap hardwareMap, String motorName) {
-        this.motor = hardwareMap.get(DcMotor.class, motorName);
+        this.motor = hardwareMap.get(DcMotorEx.class, motorName);
     }
 
     public void runToPosition(int targetPosition, double power) {
         this.lastRunMode = this.runMode;
         while(Math.abs(targetPosition - this.getCurrentPosition()) > 0) {
-            this.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            this.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
             this.setPower(power);
         }
         this.setMode(this.lastRunMode);
@@ -28,7 +33,7 @@ public class Motor {
 
     public void runToPositionAsync(int targetPosition, double power) {
         this.setTargetPosition(targetPosition);
-        this.motor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        this.motor.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
         this.setPower(power);
     }
 
@@ -62,7 +67,7 @@ public class Motor {
         return this.motor.getCurrentPosition();
     }
 
-    public void setMode(DcMotor.RunMode runMode) {
+    public void setMode(DcMotorEx.RunMode runMode) {
         this.motor.setMode(runMode);
     }
 
@@ -74,7 +79,7 @@ public class Motor {
         }
     }
 
-    public void setDirection(DcMotor.Direction direction) {
+    public void setDirection(DcMotorEx.Direction direction) {
         this.motor.setDirection(direction);
     }
 }

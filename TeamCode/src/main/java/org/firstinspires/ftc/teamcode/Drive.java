@@ -1,14 +1,12 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.acmerobotics.dashboard.FtcDashboard;
-import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.util.ElapsedTime;
-import com.qualcomm.robotcore.hardware.PIDCoefficients;
 import com.z3db0y.davidlib.Logger;
 
 import org.firstinspires.ftc.robotcore.external.navigation.Acceleration;
@@ -61,50 +59,15 @@ public class Drive extends LinearOpMode {
     long prevTime = 0;
     double targetVeloRadUp = 0;
     double targetVeloRadDown = 0;
-
-    //setvelocitypid
-    PIDFCoefficients pidfCoeffs = Configurable.pidfCoeffs;
-    public PIDFCoefficients pidfGains = new PIDFCoefficients(0, 0, 0, 0); // PID gains which we will define later in the process
-    ElapsedTime PIDFTimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS); //timer
-    double lastError = 0;
-    double integral = 0;
-
-    public void setVelocityRadPID(DcMotorEx motor, double targetVelocityRad){
-        PIDFTimer.reset(); // resets the timer
-
-        double currentVelocityRad = motor.getVelocity(AngleUnit.RADIANS);
-        //P
-        double error = targetVelocityRad - currentVelocityRad; //pretty self explanatory -> just finds the error
-        pidfGains.p = error * pidfCoeffs.p;
-        // acts directly on the error; p-coefficient identifies how much to act upon it
-        // p-coefficient (very low = not much effect; very high = lots of overshoot/oscillations)
-        //I
-        integral += error * PIDFTimer.time();
-        pidfGains.i = integral * pidfCoeffs.i;
-        // multiplies integrated error by i-coefficient constant
-        // i-coefficient (very high = fast reaction to steady-state error but lots of overshoot; very low = slow reaction to steady-state error)
-        // for velocity, because friction isn't a big issue, only reason why you would need i would be for insufficient correction from p-gain
-        //continuously sums error accumulation to prevent steady-state error (friction, not enough p-gain to cause change)
-        //D
-        double deltaError = error - lastError; //finds how the error changes from the previous cycle
-        double derivative = deltaError / PIDFTimer.time(); //deltaError/time gives the rate of change (sensitivity of the system)
-        pidfGains.d = derivative * pidfCoeffs.d;
-        // multiplies derivative by d-coefficient
-        // d-coefficient (very high = increased volatility; very low = too little effect on dampening system)
-        // F
-        double correction = pidfGains.f * currentVelocityRad;
-        double velocity = pidfGains.p + pidfGains.i + pidfGains.d + correction; //adds the three gains together to get the final velocity
-
-        motor.setVelocity(velocity, AngleUnit.RADIANS);
-        //adds up the P I D F gains accumulating for the targetVelocity bias
-
-        lastError = error;
-        // makes our current error as our new last error for the next cycle
-    }
+    PIDFCoefficients shooterUpCoeffs = Configurable.shooterUpCoeffs;
+    PIDFCoefficients shooterDownCoeffs = Configurable.shooterDownCoeffs;
+    ElapsedTime PIDFtimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+    double lastShooterUpError = 0;
+    double lastShooterDownError = 0;
 
     public void shooterCalculator(DcMotorEx motor, double horizontalDistanceToTarget) {
-        double maxShooterVelo = Configurable.maxShooterVeloRads;
         double minShooterVelo = Configurable.minShooterVeloRads;
+        double maxShooterVelo = Configurable.maxShooterVeloRads;
         double shooterGearRatio = Configurable.shooterGearRatio;
         double shooterWheelRadiusStart = Configurable.shooterWheelRadiusStart;
         double shooterWheelMaxExpansion = Configurable.shooterWheelMaxExpansion;
@@ -125,11 +88,6 @@ public class Drive extends LinearOpMode {
         double shooterWheelRadius = shooterWheelRadiusStart + (shooterWheelMaxExpansion * currentVelo/ maxShooterVelo);
         double targetVeloRad = targetVelo / shooterGearRatio / shooterWheelRadius;
 
-        FtcDashboard.getInstance().getTelemetry().addData("shooterDown velocity", shooterDown.getVelocity(AngleUnit.RADIANS));
-        FtcDashboard.getInstance().getTelemetry().addData("shooterUp velocity", shooterUp.getVelocity(AngleUnit.RADIANS));
-        FtcDashboard.getInstance().getTelemetry().addData("targetVeloRad", targetVeloRad);
-
-
         Logger.addData("targetVelo / shooterGearRatio / shooterWheelRadius: " + targetVelo + "/" + shooterGearRatio + "/" + shooterWheelRadius + "=" + targetVeloRad);
 
         targetVeloRadUp = targetVeloRad;
@@ -146,6 +104,7 @@ public class Drive extends LinearOpMode {
     }
 
     private void shooterControl(){
+        PIDFtimer.reset();
         double shooterStep = Configurable.shooterStep;
         double distanceFromTarget = Configurable.horizontalDistanceToTarget;
         shooterCalculator(shooterDown, distanceFromTarget);
@@ -162,9 +121,23 @@ public class Drive extends LinearOpMode {
             targetVeloRadUp -= shooterStep;
             targetVeloRadDown -= shooterStep;
         }
-        setVelocityRadPID(shooterUp, targetVeloRadUp);
-        setVelocityRadPID(shooterDown, targetVeloRadDown);
-        FtcDashboard.getInstance().getTelemetry().update();
+        double shooterUpVelo = shooterUp.getVelocity(AngleUnit.RADIANS);
+        double shooterDownVelo = shooterDown.getVelocity(AngleUnit.RADIANS);
+        double shooterUpError = targetVeloRadUp - shooterUpVelo;
+        double shooterDownError = targetVeloRadDown - shooterDownVelo;
+        double shooterUpIntegral = shooterUpError * PIDFtimer.time();
+        double shooterDownIntegral = shooterDownError * PIDFtimer.time();
+        double shooterUpDeltaError = shooterUpError - lastShooterUpError;
+        double shooterDownDeltaError = shooterDownError - lastShooterDownError;
+        double shooterUpDerivative = shooterUpDeltaError / PIDFtimer.time();
+        double shooterDownDerivative = shooterDownDeltaError / PIDFtimer.time();
+        shooterUp.setVelocityPIDFCoefficients(shooterUpError * shooterUpCoeffs.p, shooterUpIntegral * shooterUpCoeffs.i, shooterUpDerivative * shooterUpCoeffs.d, shooterUpVelo * shooterUpCoeffs.f);
+        shooterDown.setVelocityPIDFCoefficients(shooterDownError * shooterDownCoeffs.p, shooterDownIntegral * shooterDownCoeffs.i, shooterDownDerivative * shooterDownCoeffs.d, shooterDownVelo * shooterDownCoeffs.f);
+
+        Logger.addDataDashboard("shooterDown velocity", shooterDownVelo);
+        Logger.addDataDashboard("shooterUp velocity", shooterUpVelo);
+        Logger.addDataDashboard("shooterDown target velocity", targetVeloRadDown);
+        Logger.addDataDashboard("shooterUp target velocity", targetVeloRadUp);
     }
 
     private void globalPowerFactorControl() {
@@ -258,9 +231,9 @@ public class Drive extends LinearOpMode {
 
             communication();
 
-            driveTrainControl();
-
             globalPowerFactorControl();
+
+            driveTrainControl();
 
             shooterControl();
 
