@@ -1,11 +1,14 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.PIDCoefficients;
+import com.qualcomm.robotcore.util.ElapsedTime;
 import com.z3db0y.davidlib.DriveTrain;
 import com.z3db0y.davidlib.LocationTracker;
 import com.z3db0y.davidlib.Logger;
@@ -19,8 +22,29 @@ import java.util.HashMap;
 //! This code requires a robot's parameters
 //! to work properly. Currently, the parameters
 //! are calibrated based on the test robot.
+@Config
 @TeleOp(name = "Location Tracker Test", group = "FGC22")
 public class LocationTrackerTest extends LinearOpMode {
+
+    double integralSum = 0;
+    double lastError = 0;
+    ElapsedTime timer = new ElapsedTime();
+    public static PIDCoefficients pidCoeffs = new PIDCoefficients(0.1, 0.1, 0.1); //tune these
+
+    public double angleWrap(double radians) {
+        while(radians > Math.PI) radians -= 2 * Math.PI;
+        while(radians < -Math.PI) radians += 2 * Math.PI;
+        return radians;
+    }
+
+    public double pidControl(double reference, double state){
+        double error = angleWrap(reference - state);
+        integralSum += error * timer.seconds();
+        double derivative = (error - lastError) / timer.seconds();
+        lastError = error;
+        timer.reset();
+        return (error * LocationTrackerTest.pidCoeffs.p) + (integralSum * LocationTrackerTest.pidCoeffs.i) + (derivative * LocationTrackerTest.pidCoeffs.d);
+    }
 
     @Override
     public void runOpMode() {
@@ -55,34 +79,15 @@ public class LocationTrackerTest extends LinearOpMode {
         waitForStart();
 
         double targetAngle = tracker.getPosition().anglesTo(target).get(0);
-        double currentAngle;
-        if (targetAngle > 180) targetAngle -= 360;
-
-        double turnThreshold = 0.5;
-        double rangeMin = targetAngle + turnThreshold / 2;
-        double rangeMax = targetAngle - turnThreshold / 2;
-
-        double diff;
-        do {
-            currentAngle = imu.getAngularOrientation().firstAngle;
-            if (currentAngle == 180 && targetAngle < 0) currentAngle = -180;
-
-            double target360 = targetAngle < 0 ? targetAngle + 360 : targetAngle;
-            double current360 = currentAngle < 0 ? currentAngle + 360 : currentAngle;
-            double diff360 = current360 - target360;
-            int directionMultiplier = Math.abs(diff360) > 180 ? (diff360 > 0 ? 1 : -1) : (diff360 > 0 ? -1 : 1);
-
-            leftMotor.setPower(0.5 * directionMultiplier);
-            rightMotor.setPower(-0.5 * directionMultiplier);
-            Logger.update();
-        } while (currentAngle < rangeMin || currentAngle > rangeMax);
-        leftMotor.setPower(0);
-        rightMotor.setPower(0);
-
-        while(Math.abs(tracker.getPosition().X - target.X) > 3 && Math.abs(tracker.getPosition().Z - target.Z) > 3) {
+        while(Math.abs(tracker.getPosition().X - target.X) > 3 || Math.abs(tracker.getPosition().Z - target.Z) > 3) {
             tracker.updatePosition();
-            leftMotor.setPower(0.5);
-            rightMotor.setPower(0.5);
+            double currentAngle = imu.getAngularOrientation().firstAngle;
+            if(currentAngle < 0) currentAngle += 360;
+            currentAngle = 360 - currentAngle;
+
+            double power = pidControl(Math.toRadians(targetAngle), Math.toRadians(currentAngle));
+            leftMotor.setPower(0.1 + power);
+            rightMotor.setPower(0.1 - power);
         }
         leftMotor.setPower(0);
         rightMotor.setPower(0);
