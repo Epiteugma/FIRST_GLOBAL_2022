@@ -53,6 +53,12 @@ public class Logger {
         addDataInternal(message, null, stackTraceElement.getClassName().split("\\.")[stackTraceElement.getClassName().split("\\.").length-1] + "." + stackTraceElement.getMethodName());
     }
 
+    static public void speak(String message){
+        StackTraceElement stackTraceElement = Thread.currentThread().getStackTrace()[3];
+        telemetry.speak(message);
+        addDataInternal(message, null, stackTraceElement.getClassName().split("\\.")[stackTraceElement.getClassName().split("\\.").length-1] + "." + stackTraceElement.getMethodName());
+    }
+
     static public void update() {
         if(telemetry != null) {
             for(String line : lines) {

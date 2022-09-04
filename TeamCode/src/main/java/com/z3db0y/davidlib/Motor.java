@@ -48,7 +48,6 @@ public class Motor {
 
     public void setPower(double power) {
         this.setPowerInternal(power);
-        this.holdPosition();
     }
 
     private void setPowerInternal(double power) {
@@ -71,12 +70,39 @@ public class Motor {
         this.motor.setMode(runMode);
     }
 
+    public void resetEncoder(){
+        this.motor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        this.motor.setMode(this.runMode);
+    }
+
+    public void setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior behavior) {
+        this.motor.setZeroPowerBehavior(behavior);
+    }
+
+    public DcMotorEx.ZeroPowerBehavior getZeroPowerBehavior() { return this.motor.getZeroPowerBehavior(); }
+
     private void holdPosition() {
         if(this.getPower() == 0) {
             this.lastRunMode = this.runMode;
             this.setTargetPosition(this.getCurrentPosition());
             this.setPowerInternal(1);
         }
+    }
+
+    public double getVelocity() {
+        return this.motor.getVelocity();
+    }
+
+    public void setVelocity(double angularRate, AngleUnit angleUnit) {
+        this.motor.setVelocity(angularRate, angleUnit);
+    }
+
+    public double getVelocity(AngleUnit angleUnit) {
+        return this.motor.getVelocity(angleUnit);
+    }
+
+    public void setVelocityPIDFCoefficients(double p, double i, double d, double f) {
+        this.motor.setPIDFCoefficients(DcMotorEx.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(p, i, d, f));
     }
 
     public void setDirection(DcMotorEx.Direction direction) {

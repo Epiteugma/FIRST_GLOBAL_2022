@@ -1,7 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.ThermalEquilibrium.homeostasis.Parameters.PIDCoefficients;
 import com.acmerobotics.dashboard.config.Config;
-import com.qualcomm.robotcore.hardware.PIDCoefficients;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 
 @Config
@@ -12,18 +12,21 @@ public class Configurable {
     public static double collectorPower = 1;
     public static double conveyorPower = 1;
 
-    // Wheel dimensions and distances
-    // Old Wheels
+    // Wheel dimensions and robot measurements
      public static double wheelRadius = 90.0/10.0/2.0;
-    // New wheels
-//    public static double wheelRadius = 7.5;
+     public static int motorTicksPerRevolution = 12 * 28;
+     public static double robotWidth = 38.8;
+     public static double robotLength = 43.5;
 //    public static double wheelCircumference = 2 * Math.PI * wheelRadius;
 //    public static double centerToWheel = 21;
 //    public static double driveGearRatio = 14.0/2.0;
 
 
-    public static PIDFCoefficients shooterUpCoeffs = new PIDFCoefficients(0.3, 0.05, 0.3, 3); // PID coefficients that need to be tuned probably through FTC dashboard
-    public static PIDFCoefficients shooterDownCoeffs = new PIDFCoefficients(0.3, 0.05, 0.3, 3); // PID coefficients that need to be tuned probably through FTC dashboard
+    public static PIDCoefficients turnCoeffs = new PIDCoefficients(0.1, 0.1, 0.1); //tune these
+    public static PIDCoefficients driveCoeffs = new PIDCoefficients(0.1, 0.1, 0.1); //tune these
+
+    public static PIDCoefficients shooterUpCoeffs = new PIDCoefficients(0.1, 0.05, 0.1); // PID coefficients that need to be tuned probably through FTC dashboard
+    public static PIDCoefficients shooterDownCoeffs = new PIDCoefficients(0.1, 0.05, 0.1); // PID coefficients that need to be tuned probably through FTC dashboard
 
     public static double heightOfTarget = 250;
     public static double horizontalDistanceToTarget = 260;

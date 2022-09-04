@@ -1,89 +1,141 @@
 package org.firstinspires.ftc.teamcode;
 
-import com.acmerobotics.dashboard.FtcDashboard;
+import com.ThermalEquilibrium.homeostasis.Controllers.Feedback.AngleController;
+import com.ThermalEquilibrium.homeostasis.Controllers.Feedback.BasicPID;
+import com.ThermalEquilibrium.homeostasis.Parameters.PIDCoefficients;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.PIDFCoefficients;
-import com.qualcomm.robotcore.util.ElapsedTime;
+import com.z3db0y.davidlib.DriveTrain;
+import com.z3db0y.davidlib.LocationTracker;
 import com.z3db0y.davidlib.Logger;
+import com.z3db0y.davidlib.Motor;
+import com.z3db0y.davidlib.Vector;
 
 import org.firstinspires.ftc.robotcore.external.navigation.Acceleration;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
+
+import java.util.Arrays;
+import java.util.HashMap;
 
 @TeleOp(name = "TeleOpFGC", group = "FGC22")
 public class Drive extends LinearOpMode {
-    DcMotorEx leftSide;
-    DcMotorEx rightSide;
-    DcMotorEx conveyor;
-    DcMotorEx collector;
-    DcMotorEx shooterDown;
-    DcMotorEx shooterUp;
+//    DcMotorEx leftSide;
+//    DcMotorEx rightSide;
+    Motor leftSide;
+    Motor rightSide;
+    Motor conveyor;
+    Motor collector;
+    Motor shooterDown;
+    Motor shooterUp;
     BNO055IMU imu;
+    DriveTrain driveTrain;
+    LocationTracker tracker;
+    Vector BASKET_TARGET = new Vector(300, 0, 300);
+    double SHOOTING_CIRCLE_RADIUS = 250;
+
+    public static PIDCoefficients turnCoeffs = Configurable.turnCoeffs;
+    public static PIDCoefficients driveCoeffs = Configurable.driveCoeffs;
+    public static PIDCoefficients shooterUpCoeffs = Configurable.shooterUpCoeffs;
+    public static PIDCoefficients shooterDownCoeffs = Configurable.shooterDownCoeffs;
+
+    BasicPID turnPID = new BasicPID(turnCoeffs);
+    BasicPID drivePID = new BasicPID(driveCoeffs);
+    BasicPID shooterUPPID = new BasicPID(shooterUpCoeffs);
+    BasicPID shooterDownPID = new BasicPID(shooterDownCoeffs);
+    AngleController angleController = new AngleController(turnPID);
 
     public void initHardware() {
-        leftSide = hardwareMap.get(DcMotorEx.class, "leftSide");
-        rightSide = hardwareMap.get(DcMotorEx.class, "rightSide");
-        collector = hardwareMap.get(DcMotorEx.class, "collector");
-        conveyor = hardwareMap.get(DcMotorEx.class, "conveyor");
+        leftSide = new Motor(hardwareMap, "leftSide");
+        rightSide = new Motor(hardwareMap, "rightSide");
+        collector = new Motor(hardwareMap, "collector");
+        conveyor = new Motor(hardwareMap, "conveyor");
 
-        shooterDown = hardwareMap.get(DcMotorEx.class, "shooterDown");
-        shooterUp = hardwareMap.get(DcMotorEx.class, "shooterUp");
+        shooterDown = new Motor(hardwareMap, "shooterDown");
+        shooterUp = new Motor(hardwareMap, "shooterUp");
 
         // imu
         BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
         parameters.angleUnit = BNO055IMU.AngleUnit.DEGREES;
         parameters.accelUnit = BNO055IMU.AccelUnit.METERS_PERSEC_PERSEC;
+        //invert imu
         imu = hardwareMap.get(BNO055IMU.class, "imu");
         imu.initialize(parameters);
 
-
-        leftSide.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
-        rightSide.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
 
         // Directions
         shooterUp.setDirection(DcMotorEx.Direction.REVERSE);
         shooterDown.setDirection(DcMotorEx.Direction.REVERSE);
         leftSide.setDirection(DcMotorEx.Direction.FORWARD);
         rightSide.setDirection(DcMotorEx.Direction.FORWARD);
+        collector.setDirection(DcMotorEx.Direction.FORWARD);
+        conveyor.setDirection(DcMotorEx.Direction.FORWARD);
+
+        // Reset encoders
+        shooterUp.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        shooterUp.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        shooterDown.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        shooterDown.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        leftSide.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        leftSide.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        rightSide.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        rightSide.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        collector.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        collector.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        conveyor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        conveyor.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+
+
+        HashMap<DriveTrain.Location, Motor> driveTrainMotors = new HashMap<>();
+        driveTrainMotors.put(DriveTrain.Location.FRONTLEFT, leftSide);
+        driveTrainMotors.put(DriveTrain.Location.FRONTRIGHT, rightSide);
+        driveTrain = new DriveTrain(DriveTrain.Type.TWOWHEELDRIVE, driveTrainMotors);
+        tracker = new LocationTracker();
+        LocationTracker.Parameters params = new LocationTracker.Parameters();
+        params.driveTrain = driveTrain;
+        params.motorTicksPerRevolution = Configurable.motorTicksPerRevolution;
+        params.robotWidth = Configurable.robotWidth;
+        params.wheelRadius = Configurable.wheelRadius;
+        tracker.initialize(params);
     }
 
+    double globalPowerFactor = 0.7;
     double collectorPower = Configurable.collectorPower;
     double conveyorPower = Configurable.conveyorPower;
+
+    boolean shooterActivated = false;
     double shooterStep = Configurable.shooterStep;
     double shooterMarginOfError = Configurable.shooterMarginOfError;
-    double globalPowerFactor = 0.7;
+    double minShooterVelo = Configurable.minShooterVeloRads;
+    double maxShooterVelo = Configurable.maxShooterVeloRads;
+    double shooterGearRatio = Configurable.shooterGearRatio;
+    double shooterWheelRadiusStart = Configurable.shooterWheelRadiusStart;
+    double shooterWheelMaxExpansion = Configurable.shooterWheelMaxExpansion;
+    double verticalDistanceToTarget = Configurable.verticalDistanceToTarget;
+    double shooterAngleToTarget;
+    double minimumDistanceToTarget;
+
     long prevTime = 0;
     double targetVeloRadUp = 0;
     double targetVeloRadDown = 0;
-    PIDFCoefficients shooterUpCoeffs = Configurable.shooterUpCoeffs;
-    PIDFCoefficients shooterDownCoeffs = Configurable.shooterDownCoeffs;
-    ElapsedTime PIDFtimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
-    double lastShooterUpError = 0;
-    double lastShooterDownError = 0;
 
-    public void shooterCalculator(DcMotorEx motor, double horizontalDistanceToTarget) {
-        double minShooterVelo = Configurable.minShooterVeloRads;
-        double maxShooterVelo = Configurable.maxShooterVeloRads;
-        double shooterGearRatio = Configurable.shooterGearRatio;
-        double shooterWheelRadiusStart = Configurable.shooterWheelRadiusStart;
-        double shooterWheelMaxExpansion = Configurable.shooterWheelMaxExpansion;
-        double verticalDistanceToTarget = Configurable.verticalDistanceToTarget;
-        double angleToTarget= imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).secondAngle + 90; // control hub is X degrees off the way it is placed
-        double angleToTargetTan = Math.tan(Math.toRadians(angleToTarget));
-        double minimumDistanceToTarget = horizontalDistanceToTarget / angleToTargetTan;
+    public void shooterCalculator(Motor motor, double horizontalDistanceToTarget) {
+        shooterAngleToTarget = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).secondAngle + 90; // control hub is X degrees off the way it is placed
+        double shooterAngleToTargetTan = Math.tan(Math.toRadians(shooterAngleToTarget));
+        // D * targetAngleTan has to be bigger/equal(risky) than verticalDistanceToTarget
+        minimumDistanceToTarget = verticalDistanceToTarget / shooterAngleToTargetTan;
         double sqrdHorizontalDistanceToTarget = Math.pow(horizontalDistanceToTarget, 2);
-        double sqrdTargetAngleTan = Math.pow(angleToTargetTan, 2);
+        double sqrdTargetAngleTan = Math.pow(shooterAngleToTargetTan, 2);
         Acceleration gravity = imu.getGravity();
         double gravityMagnitude = Math.sqrt(Math.pow(gravity.xAccel, 2) + Math.pow(gravity.yAccel, 2) + Math.pow(gravity.zAccel, 2));
 
-        Logger.addData("Angle to Target" + angleToTarget);
+        Logger.addData("Shooter angle to target: " + shooterAngleToTarget);
 
         double targetVelo = Math.sqrt(gravityMagnitude * sqrdHorizontalDistanceToTarget * (1 + sqrdTargetAngleTan) /
-                (2 * (horizontalDistanceToTarget * angleToTargetTan - verticalDistanceToTarget)));
+                (2 * (horizontalDistanceToTarget * shooterAngleToTargetTan - verticalDistanceToTarget)));
         double currentVelo = motor.getVelocity(AngleUnit.RADIANS);
         double shooterWheelRadius = shooterWheelRadiusStart + (shooterWheelMaxExpansion * currentVelo/ maxShooterVelo);
         double targetVeloRad = targetVelo / shooterGearRatio / shooterWheelRadius;
@@ -91,53 +143,85 @@ public class Drive extends LinearOpMode {
         Logger.addData("targetVelo / shooterGearRatio / shooterWheelRadius: " + targetVelo + "/" + shooterGearRatio + "/" + shooterWheelRadius + "=" + targetVeloRad);
 
         targetVeloRadUp = targetVeloRad;
-        // D * targetAngleTan has to be bigger/equal(risky) than verticalDistanceToTarget
-        if ( horizontalDistanceToTarget < minimumDistanceToTarget) {
-            double radsAdditionRange = Configurable.radsAdditionRange;
-            double radsDivider = minimumDistanceToTarget / radsAdditionRange;
-            double radIncrease = horizontalDistanceToTarget / radsDivider;
-            targetVeloRadDown = targetVeloRad + radIncrease;
-        }
-        else {
-            targetVeloRadDown = targetVeloRad;
+        targetVeloRadDown = targetVeloRad;
+    }
+
+    private void haltFIRE(){
+        shooterUp.setPower(0);
+        shooterDown.setPower(0);
+    }
+
+    private void FIRE(){
+        double shooterUpVeloRad = shooterUPPID.calculate(targetVeloRadUp, shooterUp.getVelocity(AngleUnit.RADIANS));
+        double shooterDownVeloRad = shooterDownPID.calculate(targetVeloRadDown, shooterDown.getVelocity(AngleUnit.RADIANS));
+
+        shooterDown.setVelocity(shooterDownVeloRad, AngleUnit.RADIANS);
+        shooterUp.setVelocity(shooterUpVeloRad, AngleUnit.RADIANS);
+
+        Logger.addDataDashboard("shooterDown velocity", shooterDown.getVelocity(AngleUnit.RADIANS));
+        Logger.addDataDashboard("shooterUp velocity", shooterUp.getVelocity(AngleUnit.RADIANS));
+        Logger.addDataDashboard("shooterDown target velocity", targetVeloRadDown);
+        Logger.addDataDashboard("shooterUp target velocity", targetVeloRadUp);
+    }
+
+    private void turnPID(double targetAngle, double currentAngle){
+        while (Math.abs(targetAngle - currentAngle) > 3) {
+            currentAngle = -imu.getAngularOrientation().firstAngle;
+            tracker.updatePosition(currentAngle);
+            if(currentAngle < 0) currentAngle += 360;
+            Logger.addDataDashboard("Turning to: ", targetAngle);
+            Logger.addDataDashboard("Current Angle: ", currentAngle);
+
+            double power = angleController.calculate(Math.toRadians(targetAngle), Math.toRadians(currentAngle));
+
+            leftSide.setPower(power);
+            rightSide.setPower(-power);
         }
     }
 
-    private void shooterControl(){
-        PIDFtimer.reset();
+    private void main(){
         double shooterStep = Configurable.shooterStep;
-        double distanceFromTarget = Configurable.horizontalDistanceToTarget;
-        shooterCalculator(shooterDown, distanceFromTarget);
-        shooterCalculator(shooterUp, distanceFromTarget);
-        if (gamepad1.circle) {
-            shooterCalculator(shooterDown, distanceFromTarget);
-            shooterCalculator(shooterUp, distanceFromTarget);
-        }
-        else if(gamepad1.triangle){
+        double positionDiff = shooterStep * 15; // TODO: find the exact proportion of radians to distance
+        double horizontalDistanceToTarget = tracker.distanceToTarget(BASKET_TARGET);
+        shooterCalculator(shooterDown, horizontalDistanceToTarget);
+        shooterCalculator(shooterUp, horizontalDistanceToTarget);
+        if(gamepad1.right_bumper){
             targetVeloRadUp += shooterStep;
             targetVeloRadDown += shooterStep;
+            tracker.setPosition(new Vector(tracker.getPosition().X - positionDiff,0,tracker.getPosition().Z));
         }
-        else if(gamepad1.cross){
+        else if(gamepad1.left_bumper){
             targetVeloRadUp -= shooterStep;
             targetVeloRadDown -= shooterStep;
+            tracker.setPosition(new Vector(tracker.getPosition().X + positionDiff,0,tracker.getPosition().Z));
         }
-        double shooterUpVelo = shooterUp.getVelocity(AngleUnit.RADIANS);
-        double shooterDownVelo = shooterDown.getVelocity(AngleUnit.RADIANS);
-        double shooterUpError = targetVeloRadUp - shooterUpVelo;
-        double shooterDownError = targetVeloRadDown - shooterDownVelo;
-        double shooterUpIntegral = shooterUpError * PIDFtimer.time();
-        double shooterDownIntegral = shooterDownError * PIDFtimer.time();
-        double shooterUpDeltaError = shooterUpError - lastShooterUpError;
-        double shooterDownDeltaError = shooterDownError - lastShooterDownError;
-        double shooterUpDerivative = shooterUpDeltaError / PIDFtimer.time();
-        double shooterDownDerivative = shooterDownDeltaError / PIDFtimer.time();
-        shooterUp.setVelocityPIDFCoefficients(shooterUpError * shooterUpCoeffs.p, shooterUpIntegral * shooterUpCoeffs.i, shooterUpDerivative * shooterUpCoeffs.d, shooterUpVelo * shooterUpCoeffs.f);
-        shooterDown.setVelocityPIDFCoefficients(shooterDownError * shooterDownCoeffs.p, shooterDownIntegral * shooterDownCoeffs.i, shooterDownDerivative * shooterDownCoeffs.d, shooterDownVelo * shooterDownCoeffs.f);
 
-        Logger.addDataDashboard("shooterDown velocity", shooterDownVelo);
-        Logger.addDataDashboard("shooterUp velocity", shooterUpVelo);
-        Logger.addDataDashboard("shooterDown target velocity", targetVeloRadDown);
-        Logger.addDataDashboard("shooterUp target velocity", targetVeloRadUp);
+        if(shooterActivated) FIRE();
+        else haltFIRE();
+
+        if (gamepad1.circle) {
+            if (tracker.checkInsideCircle(BASKET_TARGET, SHOOTING_CIRCLE_RADIUS)) {
+                if (tracker.checkInsideCircle(BASKET_TARGET, minimumDistanceToTarget)) {
+                    Logger.speak("Inside minimum distance");
+                }
+                else {
+                    shooterActivated = !shooterActivated;
+                    if (!shooterActivated) Logger.speak("Shooter Deactivated");
+                    else Logger.speak("Shooter activated");
+                }
+            }
+            else{
+                Logger.speak("Outside shooting circle can't shoot");
+            }
+        }
+        else if (gamepad1.cross){
+            if (!tracker.checkInsideCircle(BASKET_TARGET, SHOOTING_CIRCLE_RADIUS)) {
+                Logger.speak("I am turning but I am not in the shooting circle");
+            }
+            double currentAngle = -imu.getAngularOrientation().firstAngle;
+            double targetAngle = tracker.angleToTarget(BASKET_TARGET);
+            turnPID(targetAngle, currentAngle);
+        }
     }
 
     private void globalPowerFactorControl() {
@@ -164,10 +248,10 @@ public class Drive extends LinearOpMode {
     }
 
     private void driveTrainControl(){
-        double yleft = gamepad1.left_stick_y;
-        double yright = gamepad1.right_stick_y;
-        leftSide.setPower(yleft * globalPowerFactor);
-        rightSide.setPower(yright * globalPowerFactor);
+        double yleft = gamepad1.left_stick_y * globalPowerFactor; //inverted
+        double xright = gamepad1.right_stick_x * globalPowerFactor; //inverted
+        leftSide.setPower(-yleft + xright);
+        rightSide.setPower(-yleft - xright);
     }
 
     private void conveyorControl(){
@@ -187,35 +271,49 @@ public class Drive extends LinearOpMode {
         collector.setPower(collectorPower);
     }
 
-    private void communication(){
-        if(gamepad1.right_trigger > 0) {
-            gamepad2.rumble(gamepad1.right_trigger, gamepad1.right_trigger, 1);
+    private void locator(){
+        if (gamepad1.dpad_down){
+            tracker.setPosition(new Vector(150,0,150));
         }
+        else if (gamepad1.dpad_left) {
+            // set current position as 0,0,0
+            tracker.setPosition(new Vector(0,0,0));
+        }
+        else if(gamepad1.dpad_right) {
+            tracker.setPosition(new Vector(0,0,300));
+        }
+        tracker.updatePosition(-imu.getAngularOrientation().firstAngle);
     }
 
     private void Logging() {
         Logger.addData("Powers:");
-        Logger.addData("|--  GlobalPowerFactor: " + globalPowerFactor);
-        Logger.addData("|--  Right Side power: " + rightSide.getPower());
-        Logger.addData("|--  Left Side power: " + leftSide.getPower());
-        Logger.addData("|--  Conveyor power: " + conveyor.getPower());
-        Logger.addData("|--  Collector power: " + collector.getPower());
-        Logger.addData("|--  ShooterUp power: " + shooterUp.getPower());
-        Logger.addData("|--  ShooterDown power: " + shooterDown.getPower());
-        Logger.addData("|--  ShooterUp velocity in radians: " + shooterUp.getVelocity(AngleUnit.RADIANS));
-        Logger.addData("|--  ShooterDown velocity in radians: " + shooterDown.getVelocity(AngleUnit.RADIANS));
+        Logger.addDataDashboard("|--  GlobalPowerFactor: " , globalPowerFactor);
+        Logger.addDataDashboard("|--  Right Side power: " , rightSide.getPower());
+        Logger.addDataDashboard("|--  Left Side power: " , leftSide.getPower());
+        Logger.addDataDashboard("|--  Conveyor power: " , conveyor.getPower());
+        Logger.addDataDashboard("|--  Collector power: " , collector.getPower());
+        Logger.addDataDashboard("|--  ShooterUp power: " , shooterUp.getPower());
+        Logger.addDataDashboard("|--  ShooterDown power: " , shooterDown.getPower());
+        Logger.addDataDashboard("|--  ShooterUp velocity in radians: " , shooterUp.getVelocity(AngleUnit.RADIANS));
+        Logger.addDataDashboard("|--  ShooterDown velocity in radians: " , shooterDown.getVelocity(AngleUnit.RADIANS));
         Logger.addData("Ticks:");
-        Logger.addData("|--  RightSide ticks: " + rightSide.getCurrentPosition());
-        Logger.addData("|--  LeftSide ticks: " + leftSide.getCurrentPosition());
-        Logger.addData("|--  Conveyor ticks: " + conveyor.getTargetPosition());
-        Logger.addData("|--  collector ticks: " + collector.getCurrentPosition());
-        Logger.addData("|--  ShooterUp ticks: " + shooterUp.getCurrentPosition());
-        Logger.addData("|--  ShooterDown ticks: " + shooterDown.getCurrentPosition());
+        Logger.addDataDashboard("|--  RightSide ticks: " , rightSide.getCurrentPosition());
+        Logger.addDataDashboard("|--  LeftSide ticks: " , leftSide.getCurrentPosition());
+        Logger.addDataDashboard("|--  Conveyor ticks: " , conveyor.getCurrentPosition());
+        Logger.addDataDashboard("|--  collector ticks: " , collector.getCurrentPosition());
+        Logger.addDataDashboard("|--  ShooterUp ticks: " , shooterUp.getCurrentPosition());
+        Logger.addDataDashboard("|--  ShooterDown ticks: " , shooterDown.getCurrentPosition());
         Logger.addData("Info (usually variables):");
-        Logger.addData("|--  shooter step: " + shooterStep);
-        Logger.addData("|--  prevTime: " + prevTime);
-        Logger.addData("|--  ShooterUp target velocity in radians: " + targetVeloRadUp);
-        Logger.addData("|--  ShooterDown target velocity in radians: " + targetVeloRadDown);
+        Logger.addDataDashboard("|--  shooter step: " , shooterStep);
+        Logger.addDataDashboard("|--  prevTime: " , prevTime);
+        Logger.addDataDashboard("|--  ShooterUp target velocity in radians: " , targetVeloRadUp);
+        Logger.addDataDashboard("|--  ShooterDown target velocity in radians: " , targetVeloRadDown);
+        Logger.addData("Position:");
+        Logger.addDataDashboard("|--  X: " , tracker.getPosition().X);
+        Logger.addDataDashboard("|--  Y: " , tracker.getPosition().Y);
+        Logger.addDataDashboard("|--  Z: " , tracker.getPosition().Z);
+        Logger.addDataDashboard("|--  targetAngle: " , tracker.angleToTarget(BASKET_TARGET));
+        Logger.addDataDashboard("|--  currentAngle: " , -imu.getAngularOrientation().firstAngle);
         Logger.update();
     }
 
@@ -229,13 +327,13 @@ public class Drive extends LinearOpMode {
         waitForStart();
         while (opModeIsActive()) {
 
-            communication();
-
-            globalPowerFactorControl();
+//            globalPowerFactorControl();
 
             driveTrainControl();
 
-            shooterControl();
+            locator();
+
+            main();
 
             conveyorControl();
 

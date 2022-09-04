@@ -41,11 +41,11 @@ public class LocationTracker {
         this.telemetry = params.telemetry;
     }
 
+    public void setPosition(Vector position) {
+        this.currentLocation = position;
+    }
 
-    PIDCoefficients turnCoeffs = new PIDCoefficients(0.1, 0.1, 0.1); //tune these
-    PIDCoefficients driveCoeffs = new PIDCoefficients(0.1, 0.1, 0.1); //tune these
-
-    public Vector updatePosition() {
+    public Vector updatePosition(double robotAngle) {
         if(!this.isInitialized) return null;
 
         List<Motor> leftMotors = new ArrayList<>();
@@ -79,7 +79,7 @@ public class LocationTracker {
         double revolutionsPerDegree = distancePer90Degrees / cmPerRevolution / 90;
         double ticksPerDegree = this.motorTicksPerRevolution * revolutionsPerDegree;
 
-        double robotAngle = lastRobotAngle - sideTickDelta / ticksPerDegree;
+//        double robotAngle = lastRobotAngle - sideTickDelta / ticksPerDegree;
         while (robotAngle < 0) robotAngle += 360;
         while (robotAngle > 360) robotAngle -= 360;
 
@@ -113,7 +113,22 @@ public class LocationTracker {
         return this.currentLocation;
     }
 
-    //hello
+    public double distanceToTarget(Vector target) {
+        return Math.sqrt(Math.pow(target.X - this.currentLocation.X, 2) + Math.pow(target.Z - this.currentLocation.Z, 2));
+    }
+
+    public boolean checkInsideCircle(Vector center, double radius) {
+        double distanceToCenter = distanceToTarget(center);
+        return distanceToCenter <= radius;
+    }
+
+    public double angleToTarget(Vector point) {
+        double angle = Math.atan2(point.X - this.currentLocation.X, point.Z - this.currentLocation.Z) * 180 / Math.PI;
+        double angleDelta = angle - this.currentLocation.Y;
+        while(angleDelta < -180) angleDelta += 360;
+        while(angleDelta > 180) angleDelta -= 360;
+        return angleDelta;
+    }
 
     public Vector getPosition() {
         return this.currentLocation;

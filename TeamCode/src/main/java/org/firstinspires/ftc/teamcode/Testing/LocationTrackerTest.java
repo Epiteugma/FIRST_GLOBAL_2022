@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.Testing;
 
 import com.ThermalEquilibrium.homeostasis.Controllers.Feedback.AngleController;
 import com.ThermalEquilibrium.homeostasis.Controllers.Feedback.BasicPID;
@@ -16,6 +16,8 @@ import com.z3db0y.davidlib.LocationTracker;
 import com.z3db0y.davidlib.Logger;
 import com.z3db0y.davidlib.Motor;
 import com.z3db0y.davidlib.Vector;
+
+import org.firstinspires.ftc.teamcode.Configurable;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -58,10 +60,12 @@ public class LocationTrackerTest extends LinearOpMode {
         LocationTracker tracker = new LocationTracker();
         LocationTracker.Parameters params = new LocationTracker.Parameters();
         params.driveTrain = driveTrain;
-        params.motorTicksPerRevolution = 28 * 20;
-        params.robotWidth = 23.9;
-        params.wheelRadius = 4.5;
-        //* params.telemetry = telemetry;
+//        params.motorTicksPerRevolution = 28 * 20;
+//        params.robotWidth = 23.9;
+//        params.wheelRadius = 4.5;
+        params.motorTicksPerRevolution = Configurable.motorTicksPerRevolution;
+        params.robotWidth = Configurable.robotWidth;
+        params.wheelRadius = Configurable.wheelRadius;
         tracker.initialize(params);
 
         Vector target = new Vector(30, 0, 30);
@@ -71,8 +75,8 @@ public class LocationTrackerTest extends LinearOpMode {
         Logger.addDataDashboard("targetAngle", targetAngle);
 
         while(Math.abs(tracker.getPosition().X - target.X) > 3) {
-            tracker.updatePosition();
             double currentAngle = imu.getAngularOrientation().firstAngle;
+            tracker.updatePosition(currentAngle);
             Logger.addDataDashboard("Current Angle", currentAngle);
             if(currentAngle < 0) currentAngle += 360;
             currentAngle = 360 - currentAngle;
@@ -82,14 +86,17 @@ public class LocationTrackerTest extends LinearOpMode {
             leftMotor.setPower(power);
             rightMotor.setPower(-power);
         }
+
         while(Math.abs(tracker.getPosition().Z - target.Z) > 3) {
-            tracker.updatePosition();
+            tracker.updatePosition(imu.getAngularOrientation().firstAngle);
 
             double power = drivePID.calculate(target.Z, tracker.getPosition().Z);
 
             leftMotor.setPower(power);
             rightMotor.setPower(power);
         }
+        leftMotor.setPower(0);
+        rightMotor.setPower(0);
     }
 
 }
