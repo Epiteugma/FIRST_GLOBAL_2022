@@ -1,5 +1,8 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.ThermalEquilibrium.homeostasis.Controllers.Feedback.AngleController;
+import com.ThermalEquilibrium.homeostasis.Controllers.Feedback.BasicPID;
+import com.ThermalEquilibrium.homeostasis.Parameters.PIDCoefficients;
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
@@ -7,7 +10,6 @@ import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.PIDCoefficients;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.z3db0y.davidlib.DriveTrain;
 import com.z3db0y.davidlib.LocationTracker;
@@ -26,25 +28,12 @@ import java.util.HashMap;
 @TeleOp(name = "Location Tracker Test", group = "FGC22")
 public class LocationTrackerTest extends LinearOpMode {
 
-    double integralSum = 0;
-    double lastError = 0;
-    ElapsedTime timer = new ElapsedTime();
-    public static PIDCoefficients pidCoeffs = new PIDCoefficients(0.1, 0.1, 0.1); //tune these
+    public static PIDCoefficients turnCoeffs = new PIDCoefficients(0.1, 0.1, 0.1); //tune these
+    public static PIDCoefficients driveCoeffs = new PIDCoefficients(0.1, 0.1, 0.1); //tune these
 
-    public double angleWrap(double radians) {
-        while(radians > Math.PI) radians -= 2 * Math.PI;
-        while(radians < -Math.PI) radians += 2 * Math.PI;
-        return radians;
-    }
-
-    public double pidControl(double reference, double state){
-        double error = angleWrap(reference - state);
-        integralSum += error * timer.seconds();
-        double derivative = (error - lastError) / timer.seconds();
-        lastError = error;
-        timer.reset();
-        return (error * LocationTrackerTest.pidCoeffs.p) + (integralSum * LocationTrackerTest.pidCoeffs.i) + (derivative * LocationTrackerTest.pidCoeffs.d);
-    }
+    BasicPID turnPID = new BasicPID(turnCoeffs);
+    BasicPID drivePID = new BasicPID(driveCoeffs);
+    AngleController angleController = new AngleController(turnPID);
 
     @Override
     public void runOpMode() {
@@ -79,18 +68,28 @@ public class LocationTrackerTest extends LinearOpMode {
         waitForStart();
 
         double targetAngle = tracker.getPosition().anglesTo(target).get(0);
-        while(Math.abs(tracker.getPosition().X - target.X) > 3 || Math.abs(tracker.getPosition().Z - target.Z) > 3) {
+        Logger.addDataDashboard("targetAngle", targetAngle);
+
+        while(Math.abs(tracker.getPosition().X - target.X) > 3) {
             tracker.updatePosition();
             double currentAngle = imu.getAngularOrientation().firstAngle;
+            Logger.addDataDashboard("Current Angle", currentAngle);
             if(currentAngle < 0) currentAngle += 360;
             currentAngle = 360 - currentAngle;
 
-            double power = pidControl(Math.toRadians(targetAngle), Math.toRadians(currentAngle));
-            leftMotor.setPower(0.1 + power);
-            rightMotor.setPower(0.1 - power);
+            double power = angleController.calculate(Math.toRadians(targetAngle), Math.toRadians(currentAngle));
+
+            leftMotor.setPower(power);
+            rightMotor.setPower(-power);
         }
-        leftMotor.setPower(0);
-        rightMotor.setPower(0);
+        while(Math.abs(tracker.getPosition().Z - target.Z) > 3) {
+            tracker.updatePosition();
+
+            double power = drivePID.calculate(target.Z, tracker.getPosition().Z);
+
+            leftMotor.setPower(power);
+            rightMotor.setPower(power);
+        }
     }
 
 }

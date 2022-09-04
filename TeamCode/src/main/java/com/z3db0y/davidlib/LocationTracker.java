@@ -1,5 +1,9 @@
 package com.z3db0y.davidlib;
 
+import com.qualcomm.robotcore.hardware.PIDCoefficients;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.util.ElapsedTime;
+
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 
 import java.util.*;
@@ -36,6 +40,10 @@ public class LocationTracker {
         this.wheelRadius = params.wheelRadius;
         this.telemetry = params.telemetry;
     }
+
+
+    PIDCoefficients turnCoeffs = new PIDCoefficients(0.1, 0.1, 0.1); //tune these
+    PIDCoefficients driveCoeffs = new PIDCoefficients(0.1, 0.1, 0.1); //tune these
 
     public Vector updatePosition() {
         if(!this.isInitialized) return null;
@@ -104,6 +112,8 @@ public class LocationTracker {
         lastRobotAngle = robotAngle;
         return this.currentLocation;
     }
+
+    //hello
 
     public Vector getPosition() {
         return this.currentLocation;
