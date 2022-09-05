@@ -7,7 +7,11 @@ import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
+
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.util.ElapsedTime;
 import com.z3db0y.davidlib.DriveTrain;
 import com.z3db0y.davidlib.LocationTracker;
 import com.z3db0y.davidlib.Logger;
@@ -31,6 +35,7 @@ public class Drive extends LinearOpMode {
     Motor collector;
     Motor shooterDown;
     Motor shooterUp;
+    HashMap motorMap;
     BNO055IMU imu;
     DriveTrain driveTrain;
     LocationTracker tracker;
@@ -39,21 +44,25 @@ public class Drive extends LinearOpMode {
 
     public static PIDCoefficients turnCoeffs = Configurable.turnCoeffs;
     public static PIDCoefficients driveCoeffs = Configurable.driveCoeffs;
-    public static PIDCoefficients shooterUpCoeffs = Configurable.shooterUpCoeffs;
-    public static PIDCoefficients shooterDownCoeffs = Configurable.shooterDownCoeffs;
+    public static PIDFCoefficients shooterUpCoeffs = Configurable.shooterUpCoeffs;
+    public static PIDFCoefficients shooterDownCoeffs = Configurable.shooterDownCoeffs;
 
     BasicPID turnPID = new BasicPID(turnCoeffs);
     BasicPID drivePID = new BasicPID(driveCoeffs);
-    BasicPID shooterUPPID = new BasicPID(shooterUpCoeffs);
-    BasicPID shooterDownPID = new BasicPID(shooterDownCoeffs);
+//    BasicPID shooterUPPID = new BasicPID(shooterUpCoeffs);
+//    BasicPID shooterDownPID = new BasicPID(shooterDownCoeffs);
     AngleController angleController = new AngleController(turnPID);
 
     public void initHardware() {
+        // drivetrain
         leftSide = new Motor(hardwareMap, "leftSide");
         rightSide = new Motor(hardwareMap, "rightSide");
+
+        // transporters
         collector = new Motor(hardwareMap, "collector");
         conveyor = new Motor(hardwareMap, "conveyor");
 
+        // shooters
         shooterDown = new Motor(hardwareMap, "shooterDown");
         shooterUp = new Motor(hardwareMap, "shooterUp");
 
@@ -61,7 +70,6 @@ public class Drive extends LinearOpMode {
         BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
         parameters.angleUnit = BNO055IMU.AngleUnit.DEGREES;
         parameters.accelUnit = BNO055IMU.AccelUnit.METERS_PERSEC_PERSEC;
-        //invert imu
         imu = hardwareMap.get(BNO055IMU.class, "imu");
         imu.initialize(parameters);
 
@@ -74,19 +82,19 @@ public class Drive extends LinearOpMode {
         collector.setDirection(DcMotorEx.Direction.FORWARD);
         conveyor.setDirection(DcMotorEx.Direction.FORWARD);
 
-        // Reset encoders
-        shooterUp.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
-        shooterUp.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
-        shooterDown.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
-        shooterDown.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
-        leftSide.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
-        leftSide.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
-        rightSide.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
-        rightSide.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
-        collector.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
-        collector.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
-        conveyor.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
-        conveyor.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        motorMap = new HashMap<String, Motor>();
+        motorMap.put("left", leftSide);
+        motorMap.put("right", rightSide);
+        motorMap.put("collector", collector);
+        motorMap.put("conveyor", conveyor);
+        motorMap.put("shooterUp", shooterUp);
+        motorMap.put("shooterDown", shooterDown);
+
+        // for every motor in the map, set the mode to run without encoder
+        for (Object motor : motorMap.values()) {
+            ((Motor) motor).setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+            ((Motor) motor).setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        }
 
 
         HashMap<DriveTrain.Location, Motor> driveTrainMotors = new HashMap<>();
@@ -151,15 +159,37 @@ public class Drive extends LinearOpMode {
         shooterDown.setPower(0);
     }
 
+    ElapsedTime PIDFtimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
+    double lastShooterUpError = 0;
+    double lastShooterDownError = 0;
+
     private void FIRE(){
-        double shooterUpVeloRad = shooterUPPID.calculate(targetVeloRadUp, shooterUp.getVelocity(AngleUnit.RADIANS));
-        double shooterDownVeloRad = shooterDownPID.calculate(targetVeloRadDown, shooterDown.getVelocity(AngleUnit.RADIANS));
+        double horizontalDistanceToTarget = tracker.distanceToTarget(BASKET_TARGET);
+        shooterCalculator(shooterDown, horizontalDistanceToTarget);
+        shooterCalculator(shooterUp, horizontalDistanceToTarget);
 
-        shooterDown.setVelocity(shooterDownVeloRad, AngleUnit.RADIANS);
-        shooterUp.setVelocity(shooterUpVeloRad, AngleUnit.RADIANS);
+//        double shooterUpVeloRad = shooterUPPID.calculate(targetVeloRadUp, shooterUp.getVelocity(AngleUnit.RADIANS));
+//        double shooterDownVeloRad = shooterDownPID.calculate(targetVeloRadDown, shooterDown.getVelocity(AngleUnit.RADIANS));
+//        shooterDown.setVelocity(shooterDownVeloRad, AngleUnit.RADIANS);
+//        shooterUp.setVelocity(shooterUpVeloRad, AngleUnit.RADIANS);
+        double shooterUpVelo = shooterUp.getVelocity(AngleUnit.RADIANS);
+        double shooterDownVelo = shooterDown.getVelocity(AngleUnit.RADIANS);
+        double shooterUpError = targetVeloRadUp - shooterUpVelo;
+        double shooterDownError = targetVeloRadDown - shooterDownVelo;
+        double shooterUpIntegral = shooterUpError * PIDFtimer.time();
+        double shooterDownIntegral = shooterDownError * PIDFtimer.time();
+        double shooterUpDeltaError = shooterUpError - lastShooterUpError;
+        double shooterDownDeltaError = shooterDownError - lastShooterDownError;
+        double shooterUpDerivative = shooterUpDeltaError / PIDFtimer.time();
+        double shooterDownDerivative = shooterDownDeltaError / PIDFtimer.time();
+        shooterUp.setVelocityPIDFCoefficients(shooterUpError * shooterUpCoeffs.p, shooterUpIntegral * shooterUpCoeffs.i, shooterUpDerivative * shooterUpCoeffs.d, shooterUpVelo * shooterUpCoeffs.f);
+        shooterDown.setVelocityPIDFCoefficients(shooterDownError * shooterDownCoeffs.p, shooterDownIntegral * shooterDownCoeffs.i, shooterDownDerivative * shooterDownCoeffs.d, shooterDownVelo * shooterDownCoeffs.f);
 
-        Logger.addDataDashboard("shooterDown velocity", shooterDown.getVelocity(AngleUnit.RADIANS));
-        Logger.addDataDashboard("shooterUp velocity", shooterUp.getVelocity(AngleUnit.RADIANS));
+        shooterUp.setVelocity(targetVeloRadUp, AngleUnit.RADIANS);
+        shooterDown.setVelocity(targetVeloRadDown, AngleUnit.RADIANS);
+
+        Logger.addDataDashboard("shooterDown velocity", shooterDownVelo);
+        Logger.addDataDashboard("shooterUp velocity", shooterUpVelo);
         Logger.addDataDashboard("shooterDown target velocity", targetVeloRadDown);
         Logger.addDataDashboard("shooterUp target velocity", targetVeloRadUp);
     }
@@ -182,9 +212,6 @@ public class Drive extends LinearOpMode {
     private void main(){
         double shooterStep = Configurable.shooterStep;
         double positionDiff = shooterStep * 15; // TODO: find the exact proportion of radians to distance
-        double horizontalDistanceToTarget = tracker.distanceToTarget(BASKET_TARGET);
-        shooterCalculator(shooterDown, horizontalDistanceToTarget);
-        shooterCalculator(shooterUp, horizontalDistanceToTarget);
         if(gamepad1.right_bumper){
             targetVeloRadUp += shooterStep;
             targetVeloRadDown += shooterStep;
@@ -231,19 +258,6 @@ public class Drive extends LinearOpMode {
         } else if (gamepad1.right_bumper && globalPowerFactor + 0.1 < 0.7 && System.currentTimeMillis() >= prevTime + 500) {
             prevTime = System.currentTimeMillis();
             globalPowerFactor += 0.1;
-        }
-
-        if (gamepad1.triangle && System.currentTimeMillis() >= prevTime + 500) {
-            prevTime = System.currentTimeMillis();
-            if (Math.abs(globalPowerFactor - 0.3) < Math.abs(globalPowerFactor - 0.6)) {
-                globalPowerFactor = 0.6;
-            } else {
-                globalPowerFactor = 0.3;
-            }
-        }
-        if (gamepad1.cross && System.currentTimeMillis() >= prevTime + 500) {
-            prevTime = System.currentTimeMillis();
-            globalPowerFactor = 1;
         }
     }
 
@@ -313,6 +327,7 @@ public class Drive extends LinearOpMode {
         Logger.addDataDashboard("|--  Y: " , tracker.getPosition().Y);
         Logger.addDataDashboard("|--  Z: " , tracker.getPosition().Z);
         Logger.addDataDashboard("|--  targetAngle: " , tracker.angleToTarget(BASKET_TARGET));
+        Logger.addDataDashboard("|--  DistanceToTarget center: ", tracker.distanceToTarget(BASKET_TARGET));
         Logger.addDataDashboard("|--  currentAngle: " , -imu.getAngularOrientation().firstAngle);
         Logger.update();
     }
@@ -327,7 +342,7 @@ public class Drive extends LinearOpMode {
         waitForStart();
         while (opModeIsActive()) {
 
-//            globalPowerFactorControl();
+            globalPowerFactorControl();
 
             driveTrainControl();
 
