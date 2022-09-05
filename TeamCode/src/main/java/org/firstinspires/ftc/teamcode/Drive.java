@@ -49,8 +49,6 @@ public class Drive extends LinearOpMode {
 
     BasicPID turnPID = new BasicPID(turnCoeffs);
     BasicPID drivePID = new BasicPID(driveCoeffs);
-//    BasicPID shooterUPPID = new BasicPID(shooterUpCoeffs);
-//    BasicPID shooterDownPID = new BasicPID(shooterDownCoeffs);
     AngleController angleController = new AngleController(turnPID);
 
     public void initHardware() {
@@ -83,8 +81,8 @@ public class Drive extends LinearOpMode {
         conveyor.setDirection(DcMotorEx.Direction.FORWARD);
 
         motorMap = new HashMap<String, Motor>();
-        motorMap.put("left", leftSide);
-        motorMap.put("right", rightSide);
+        motorMap.put("leftSide", leftSide);
+        motorMap.put("rightSide", rightSide);
         motorMap.put("collector", collector);
         motorMap.put("conveyor", conveyor);
         motorMap.put("shooterUp", shooterUp);
@@ -94,6 +92,7 @@ public class Drive extends LinearOpMode {
         for (Object motor : motorMap.values()) {
             ((Motor) motor).setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
             ((Motor) motor).setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+            ((Motor) motor).setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         }
 
 
@@ -110,7 +109,7 @@ public class Drive extends LinearOpMode {
         tracker.initialize(params);
     }
 
-    double globalPowerFactor = 0.7;
+    double globalPowerFactor = 0.75;
     double collectorPower = Configurable.collectorPower;
     double conveyorPower = Configurable.conveyorPower;
 
@@ -130,7 +129,7 @@ public class Drive extends LinearOpMode {
     double targetVeloRadUp = 0;
     double targetVeloRadDown = 0;
 
-    public void shooterCalculator(Motor motor, double horizontalDistanceToTarget) {
+    public void shooterCalculator(double horizontalDistanceToTarget) {
         shooterAngleToTarget = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).secondAngle + 90; // control hub is X degrees off the way it is placed
         double shooterAngleToTargetTan = Math.tan(Math.toRadians(shooterAngleToTarget));
         // D * targetAngleTan has to be bigger/equal(risky) than verticalDistanceToTarget
@@ -144,17 +143,20 @@ public class Drive extends LinearOpMode {
 
         double targetVelo = Math.sqrt(gravityMagnitude * sqrdHorizontalDistanceToTarget * (1 + sqrdTargetAngleTan) /
                 (2 * (horizontalDistanceToTarget * shooterAngleToTargetTan - verticalDistanceToTarget)));
-        double currentVelo = motor.getVelocity(AngleUnit.RADIANS);
-        double shooterWheelRadius = shooterWheelRadiusStart + (shooterWheelMaxExpansion * currentVelo/ maxShooterVelo);
+//        double currentVelo = motor.getVelocity(AngleUnit.RADIANS);
+        double shooterWheelRadius = shooterWheelRadiusStart + (shooterWheelMaxExpansion * targetVeloRadUp/ maxShooterVelo);
         double targetVeloRad = targetVelo / shooterGearRatio / shooterWheelRadius;
 
-        Logger.addData("targetVelo / shooterGearRatio / shooterWheelRadius: " + targetVelo + "/" + shooterGearRatio + "/" + shooterWheelRadius + "=" + targetVeloRad);
-
-        targetVeloRadUp = targetVeloRad;
-        targetVeloRadDown = targetVeloRad;
+        Logger.addDataDashboard("targetVelo / shooterGearRatio / shooterWheelRadius: " + targetVelo + "/" , shooterGearRatio + "/" + shooterWheelRadius + "=" + targetVeloRad);
+        Logger.addDataDashboard("targetvelo - lastargetVelo: ", Math.abs(targetVeloRad - targetVeloRadUp));
+        if (Math.abs(targetVeloRad - targetVeloRadUp) > 0.125) {
+            targetVeloRadUp = targetVeloRad;
+            targetVeloRadDown = targetVeloRad;
+        }
     }
 
     private void haltFIRE(){
+        shooterActivated = false;
         shooterUp.setPower(0);
         shooterDown.setPower(0);
     }
@@ -162,34 +164,25 @@ public class Drive extends LinearOpMode {
     ElapsedTime PIDFtimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
     double lastShooterUpError = 0;
     double lastShooterDownError = 0;
+    double shooterUpIntegral;
+    double shooterDownIntegral;
+
+
 
     private void FIRE(){
         double horizontalDistanceToTarget = tracker.distanceToTarget(BASKET_TARGET);
-        shooterCalculator(shooterDown, horizontalDistanceToTarget);
-        shooterCalculator(shooterUp, horizontalDistanceToTarget);
+        shooterCalculator(horizontalDistanceToTarget);
 
-//        double shooterUpVeloRad = shooterUPPID.calculate(targetVeloRadUp, shooterUp.getVelocity(AngleUnit.RADIANS));
-//        double shooterDownVeloRad = shooterDownPID.calculate(targetVeloRadDown, shooterDown.getVelocity(AngleUnit.RADIANS));
-//        shooterDown.setVelocity(shooterDownVeloRad, AngleUnit.RADIANS);
-//        shooterUp.setVelocity(shooterUpVeloRad, AngleUnit.RADIANS);
-        double shooterUpVelo = shooterUp.getVelocity(AngleUnit.RADIANS);
-        double shooterDownVelo = shooterDown.getVelocity(AngleUnit.RADIANS);
-        double shooterUpError = targetVeloRadUp - shooterUpVelo;
-        double shooterDownError = targetVeloRadDown - shooterDownVelo;
-        double shooterUpIntegral = shooterUpError * PIDFtimer.time();
-        double shooterDownIntegral = shooterDownError * PIDFtimer.time();
-        double shooterUpDeltaError = shooterUpError - lastShooterUpError;
-        double shooterDownDeltaError = shooterDownError - lastShooterDownError;
-        double shooterUpDerivative = shooterUpDeltaError / PIDFtimer.time();
-        double shooterDownDerivative = shooterDownDeltaError / PIDFtimer.time();
-        shooterUp.setVelocityPIDFCoefficients(shooterUpError * shooterUpCoeffs.p, shooterUpIntegral * shooterUpCoeffs.i, shooterUpDerivative * shooterUpCoeffs.d, shooterUpVelo * shooterUpCoeffs.f);
-        shooterDown.setVelocityPIDFCoefficients(shooterDownError * shooterDownCoeffs.p, shooterDownIntegral * shooterDownCoeffs.i, shooterDownDerivative * shooterDownCoeffs.d, shooterDownVelo * shooterDownCoeffs.f);
-
+        shooterUp.setVelocityPIDFCoefficients(shooterUpCoeffs.p, shooterUpCoeffs.i, shooterUpCoeffs.d, shooterUpCoeffs.f);
+        shooterDown.setVelocityPIDFCoefficients(shooterDownCoeffs.p, shooterDownCoeffs.i, shooterDownCoeffs.d, shooterDownCoeffs.f);
         shooterUp.setVelocity(targetVeloRadUp, AngleUnit.RADIANS);
         shooterDown.setVelocity(targetVeloRadDown, AngleUnit.RADIANS);
 
-        Logger.addDataDashboard("shooterDown velocity", shooterDownVelo);
-        Logger.addDataDashboard("shooterUp velocity", shooterUpVelo);
+        if (Math.abs(shooterUp.getVelocity(AngleUnit.RADIANS)) > 9){
+            haltFIRE();
+            Logger.speak("Going to fast baby slow down maybe change your coefficients!");
+        }
+
         Logger.addDataDashboard("shooterDown target velocity", targetVeloRadDown);
         Logger.addDataDashboard("shooterUp target velocity", targetVeloRadUp);
     }
@@ -271,15 +264,17 @@ public class Drive extends LinearOpMode {
     private void conveyorControl(){
         double upVelo = Math.abs(shooterUp.getVelocity(AngleUnit.RADIANS));
         double downVelo = Math.abs(shooterDown.getVelocity(AngleUnit.RADIANS));
-        Logger.addData(upVelo);
-        Logger.addData(downVelo);
-        if (Math.abs(upVelo - targetVeloRadUp) < shooterMarginOfError && Math.abs(downVelo - targetVeloRadDown) < shooterMarginOfError && upVelo > 0 && downVelo > 0) {
+        if(
+                Math.abs(upVelo - targetVeloRadUp) <= shooterMarginOfError &&
+                Math.abs(downVelo - targetVeloRadDown) <= shooterMarginOfError
+        )
+        {
             conveyor.setPower(conveyorPower);
         }
         else {
             conveyor.setPower(0);
         }
-    }
+        }
 
     private void collectorControl() {
         collector.setPower(collectorPower);
@@ -329,6 +324,10 @@ public class Drive extends LinearOpMode {
         Logger.addDataDashboard("|--  targetAngle: " , tracker.angleToTarget(BASKET_TARGET));
         Logger.addDataDashboard("|--  DistanceToTarget center: ", tracker.distanceToTarget(BASKET_TARGET));
         Logger.addDataDashboard("|--  currentAngle: " , -imu.getAngularOrientation().firstAngle);
+        Logger.addData("Booleans: ");
+        Logger.addDataDashboard("|-- insideShootingCircle: ", tracker.checkInsideCircle(BASKET_TARGET, SHOOTING_CIRCLE_RADIUS));
+        Logger.addDataDashboard("|-- Inside no-man's land: ", tracker.checkInsideCircle(BASKET_TARGET, minimumDistanceToTarget));
+        Logger.addDataDashboard("|-- shooterActivated: ", shooterActivated);
         Logger.update();
     }
 

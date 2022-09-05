@@ -25,8 +25,8 @@ public class Configurable {
     public static PIDCoefficients turnCoeffs = new PIDCoefficients(0.1, 0.1, 0.1); //tune these
     public static PIDCoefficients driveCoeffs = new PIDCoefficients(0.1, 0.1, 0.1); //tune these
 
-    public static PIDFCoefficients shooterUpCoeffs = new PIDFCoefficients(0, 0, 0,0); // PID coefficients that need to be tuned probably through FTC dashboard
-    public static PIDFCoefficients shooterDownCoeffs = new PIDFCoefficients(0, 0, 0, 0); // PID coefficients that need to be tuned probably through FTC dashboard
+    public static PIDFCoefficients shooterUpCoeffs = new PIDFCoefficients(20, 0.13, 5,2.68); // PID coefficients that need to be tuned probably through FTC dashboard
+    public static PIDFCoefficients shooterDownCoeffs = new PIDFCoefficients(20, 0.13, 5, 2.68); // PID coefficients that need to be tuned probably through FTC dashboard
 
     public static double heightOfTarget = 250;
     public static double horizontalDistanceToTarget = 260;
@@ -41,6 +41,6 @@ public class Configurable {
     public static double minShooterVeloRads = 7.5;
     public static double radsAdditionRange = maxShooterVeloRads - minShooterVeloRads;
     public static double shooterStep = 0.25;
-    public static double shooterMarginOfError = 0.85;
+    public static double shooterMarginOfError = 0.5;
 
 }
