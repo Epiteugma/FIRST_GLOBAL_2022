@@ -108,4 +108,10 @@ public class Motor {
     public void setDirection(DcMotorEx.Direction direction) {
         this.motor.setDirection(direction);
     }
+
+    public boolean isBusy() {
+        return this.motor.isBusy();
+    }
+
+    public int getTargetPosition() { return this.motor.getTargetPosition(); }
 }

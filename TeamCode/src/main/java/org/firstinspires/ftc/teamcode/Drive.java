@@ -1,8 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
-import com.ThermalEquilibrium.homeostasis.Controllers.Feedback.AngleController;
-import com.ThermalEquilibrium.homeostasis.Controllers.Feedback.BasicPID;
-import com.ThermalEquilibrium.homeostasis.Parameters.PIDCoefficients;
+import android.util.Log;
+
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -10,6 +9,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.PIDCoefficients;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.z3db0y.davidlib.DriveTrain;
@@ -22,13 +22,10 @@ import org.firstinspires.ftc.robotcore.external.navigation.Acceleration;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 
-import java.util.Arrays;
 import java.util.HashMap;
 
 @TeleOp(name = "TeleOpFGC", group = "FGC22")
 public class Drive extends LinearOpMode {
-//    DcMotorEx leftSide;
-//    DcMotorEx rightSide;
     Motor leftSide;
     Motor rightSide;
     Motor conveyor;
@@ -42,14 +39,8 @@ public class Drive extends LinearOpMode {
     Vector BASKET_TARGET = new Vector(300, 0, 300);
     double SHOOTING_CIRCLE_RADIUS = 250;
 
-    public static PIDCoefficients turnCoeffs = Configurable.turnCoeffs;
-    public static PIDCoefficients driveCoeffs = Configurable.driveCoeffs;
     public static PIDFCoefficients shooterUpCoeffs = Configurable.shooterUpCoeffs;
     public static PIDFCoefficients shooterDownCoeffs = Configurable.shooterDownCoeffs;
-
-    BasicPID turnPID = new BasicPID(turnCoeffs);
-    BasicPID drivePID = new BasicPID(driveCoeffs);
-    AngleController angleController = new AngleController(turnPID);
 
     public void initHardware() {
         // drivetrain
@@ -161,13 +152,6 @@ public class Drive extends LinearOpMode {
         shooterDown.setPower(0);
     }
 
-    ElapsedTime PIDFtimer = new ElapsedTime(ElapsedTime.Resolution.MILLISECONDS);
-    double lastShooterUpError = 0;
-    double lastShooterDownError = 0;
-    double shooterUpIntegral;
-    double shooterDownIntegral;
-
-
 
     private void FIRE(){
         double horizontalDistanceToTarget = tracker.distanceToTarget(BASKET_TARGET);
@@ -187,20 +171,44 @@ public class Drive extends LinearOpMode {
         Logger.addDataDashboard("shooterUp target velocity", targetVeloRadUp);
     }
 
-    private void turnPID(double targetAngle, double currentAngle){
-        while (Math.abs(targetAngle - currentAngle) > 3) {
-            currentAngle = -imu.getAngularOrientation().firstAngle;
-            tracker.updatePosition(currentAngle);
-            if(currentAngle < 0) currentAngle += 360;
-            Logger.addDataDashboard("Turning to: ", targetAngle);
-            Logger.addDataDashboard("Current Angle: ", currentAngle);
+    public void turn(double pow, double target) {
+        double wheelCirc = 2 * Math.PI * Configurable.wheelRadius;
+        double cmPer90Deg = Configurable.robotWidth * Math.PI / 2;
+        double ticksPer90Deg = cmPer90Deg / wheelCirc * Configurable.motorTicksPerRevolution;
+        double targetTicks = ticksPer90Deg * target / 90;
+        double sideTickDelta = leftSide.getCurrentPosition() - rightSide.getCurrentPosition();
+        double rotation = sideTickDelta / ticksPer90Deg * 90;
+        int direction = Math.abs(target - rotation) > 180 ? 1 : -1;
 
-            double power = angleController.calculate(Math.toRadians(targetAngle), Math.toRadians(currentAngle));
+        double targetLeft = leftSide.getCurrentPosition() + (targetTicks * direction);
+        double targetRight = rightSide.getCurrentPosition() - (targetTicks * direction);
 
-            leftSide.setPower(power);
-            rightSide.setPower(-power);
+        while(
+                targetLeft > 0 ? leftSide.getCurrentPosition() < targetLeft : leftSide.getCurrentPosition() > targetLeft &&
+                targetRight > 0 ? rightSide.getCurrentPosition() < targetRight : rightSide.getCurrentPosition() > targetRight
+        ) {
+            Logger.addDataDashboard("targetLeft", targetLeft);
+            Logger.addDataDashboard("targetRight", targetRight);
+            Logger.addDataDashboard("leftSide.getCurrentPosition()", leftSide.getCurrentPosition());
+            Logger.addDataDashboard("rightSide.getCurrentPosition()", rightSide.getCurrentPosition());
+            Logger.addDataDashboard("rotation", rotation);
+            Logger.addDataDashboard("target", target);
+            Logger.addDataDashboard("direction", direction);
+            Logger.addDataDashboard("sideTickDelta", sideTickDelta);
+            Logger.addDataDashboard("ticksPer90Deg", ticksPer90Deg);
+            Logger.addDataDashboard("targetTicks", targetTicks);
+            Logger.addDataDashboard("cmPer90Deg", cmPer90Deg);
+            Logger.addDataDashboard("wheelCirc", wheelCirc);
+            Logger.addDataDashboard("pow", pow);
+            Logger.update();
+            leftSide.setPower(pow);
+            rightSide.setPower(-pow);
         }
+
+        leftSide.setPower(0);
+        rightSide.setPower(0);
     }
+
 
     private void main(){
         double shooterStep = Configurable.shooterStep;
@@ -238,9 +246,9 @@ public class Drive extends LinearOpMode {
             if (!tracker.checkInsideCircle(BASKET_TARGET, SHOOTING_CIRCLE_RADIUS)) {
                 Logger.speak("I am turning but I am not in the shooting circle");
             }
-            double currentAngle = -imu.getAngularOrientation().firstAngle;
             double targetAngle = tracker.angleToTarget(BASKET_TARGET);
-            turnPID(targetAngle, currentAngle);
+
+            turn(0.1, targetAngle);
         }
     }
 
