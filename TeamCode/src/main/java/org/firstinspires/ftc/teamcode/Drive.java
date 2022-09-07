@@ -183,10 +183,16 @@ public class Drive extends LinearOpMode {
         double targetLeft = leftSide.getCurrentPosition() + (targetTicks * direction);
         double targetRight = rightSide.getCurrentPosition() - (targetTicks * direction);
 
-        while(
-                targetLeft > 0 ? leftSide.getCurrentPosition() < targetLeft : leftSide.getCurrentPosition() > targetLeft &&
-                targetRight > 0 ? rightSide.getCurrentPosition() < targetRight : rightSide.getCurrentPosition() > targetRight
-        ) {
+        leftSide.setTargetPosition((int) targetLeft);
+        rightSide.setTargetPosition((int) targetRight);
+
+        leftSide.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        rightSide.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        leftSide.setPower(pow);
+        rightSide.setPower(pow);
+
+        while(Math.abs(leftSide.getCurrentPosition() - leftSide.getTargetPosition()) > 3 && Math.abs(leftSide.getCurrentPosition() - leftSide.getTargetPosition()) > 3) {
             Logger.addDataDashboard("targetLeft", targetLeft);
             Logger.addDataDashboard("targetRight", targetRight);
             Logger.addDataDashboard("leftSide.getCurrentPosition()", leftSide.getCurrentPosition());
@@ -201,12 +207,12 @@ public class Drive extends LinearOpMode {
             Logger.addDataDashboard("wheelCirc", wheelCirc);
             Logger.addDataDashboard("pow", pow);
             Logger.update();
-            leftSide.setPower(pow);
-            rightSide.setPower(-pow);
         }
 
         leftSide.setPower(0);
         rightSide.setPower(0);
+        leftSide.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        rightSide.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
 
 
@@ -341,7 +347,6 @@ public class Drive extends LinearOpMode {
 
     @Override
     public void runOpMode() {
-
 
         initHardware();
         Logger.setTelemetry(telemetry);

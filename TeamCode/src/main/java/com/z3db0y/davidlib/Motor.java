@@ -16,6 +16,7 @@ public class Motor {
     DcMotorEx motor;
     DcMotorEx.RunMode runMode;
     DcMotorEx.RunMode lastRunMode;
+    double power = 0;
 
     public Motor(HardwareMap hardwareMap, String motorName) {
         this.motor = hardwareMap.get(DcMotorEx.class, motorName);
@@ -47,7 +48,9 @@ public class Motor {
     }
 
     public void setPower(double power) {
-        this.setPowerInternal(power);
+        this.power = power;
+        holdPosition();
+        if(!this.holdPosition) this.setPowerInternal(power);
     }
 
     private void setPowerInternal(double power) {
@@ -55,7 +58,7 @@ public class Motor {
     }
 
     public double getPower() {
-        return this.motor.getPower();
+        return this.power;
     }
 
     public void setTargetPosition(int ticks) {
@@ -85,8 +88,9 @@ public class Motor {
         if(this.getPower() == 0) {
             this.lastRunMode = this.runMode;
             this.setTargetPosition(this.getCurrentPosition());
+            this.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
             this.setPowerInternal(1);
-        }
+        } else this.setMode(this.lastRunMode);
     }
 
     public double getVelocity() {
