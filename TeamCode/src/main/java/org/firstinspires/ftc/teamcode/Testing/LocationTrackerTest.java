@@ -10,7 +10,7 @@ import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.hardware.DcMotorImplEx;
 import com.z3db0y.davidlib.DriveTrain;
 import com.z3db0y.davidlib.LocationTracker;
 import com.z3db0y.davidlib.Logger;
@@ -46,8 +46,8 @@ public class LocationTrackerTest extends LinearOpMode {
         imuParameters.calibrationDataFile = "BNO055IMUCalibration.json";
         imu.initialize(imuParameters);
 
-        Motor leftMotor = new Motor(hardwareMap, "leftSide");
-        Motor rightMotor = new Motor(hardwareMap, "rightSide");
+        Motor leftMotor = new Motor(hardwareMap.get(DcMotorImplEx.class, "leftSide"));
+        Motor rightMotor = new Motor(hardwareMap.get(DcMotorImplEx.class, "rightSide"));
         rightMotor.setDirection(DcMotor.Direction.REVERSE);
         HashMap<DriveTrain.Location, Motor> motors = new HashMap<>();
         motors.put(DriveTrain.Location.BACKLEFT, leftMotor);

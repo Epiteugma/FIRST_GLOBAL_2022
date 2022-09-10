@@ -1,7 +1,5 @@
 package org.firstinspires.ftc.teamcode;
 
-import android.util.Log;
-
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -9,12 +7,12 @@ import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.PIDCoefficients;
+import com.qualcomm.robotcore.hardware.DcMotorImplEx;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
-import com.qualcomm.robotcore.util.ElapsedTime;
 import com.z3db0y.davidlib.DriveTrain;
 import com.z3db0y.davidlib.LocationTracker;
 import com.z3db0y.davidlib.Logger;
+import com.z3db0y.davidlib.Motor;
 import com.z3db0y.davidlib.Motor;
 import com.z3db0y.davidlib.Vector;
 
@@ -44,16 +42,16 @@ public class Drive extends LinearOpMode {
 
     public void initHardware() {
         // drivetrain
-        leftSide = new Motor(hardwareMap, "leftSide");
-        rightSide = new Motor(hardwareMap, "rightSide");
+        leftSide = new Motor(hardwareMap.get(DcMotorImplEx.class, "leftSide"));
+        rightSide = new Motor(hardwareMap.get(DcMotorImplEx.class, "rightSide"));
 
         // transporters
-        collector = new Motor(hardwareMap, "collector");
-        conveyor = new Motor(hardwareMap, "conveyor");
+        collector = new Motor(hardwareMap.get(DcMotorImplEx.class, "collector"));
+        conveyor = new Motor(hardwareMap.get(DcMotorImplEx.class, "conveyor"));
 
         // shooters
-        shooterDown = new Motor(hardwareMap, "shooterDown");
-        shooterUp = new Motor(hardwareMap, "shooterUp");
+        shooterDown = new Motor(hardwareMap.get(DcMotorImplEx.class, "shooterDown"));
+        shooterUp = new Motor(hardwareMap.get(DcMotorImplEx.class, "shooterUp"));
 
         // imu
         BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();

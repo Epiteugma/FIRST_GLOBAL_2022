@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.Testing;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorImplEx;
 import com.z3db0y.davidlib.Logger;
 import com.z3db0y.davidlib.Motor;
 
@@ -60,8 +61,8 @@ public class TurnTest extends LinearOpMode {
 
     @Override
     public void runOpMode() {
-        leftSide = new Motor(hardwareMap, "leftSide");
-        rightSide = new Motor(hardwareMap, "rightSide");
+        leftSide = new Motor(hardwareMap.get(DcMotorImplEx.class, "leftSide"));
+        rightSide = new Motor(hardwareMap.get(DcMotorImplEx.class, "rightSide"));
 
         Arrays.asList(leftSide, rightSide).forEach(motor -> {
             motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
