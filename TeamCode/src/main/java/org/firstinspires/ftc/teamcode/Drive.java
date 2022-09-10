@@ -8,6 +8,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorImplEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.z3db0y.davidlib.DriveTrain;
 import com.z3db0y.davidlib.LocationTracker;
@@ -64,7 +65,7 @@ public class Drive extends LinearOpMode {
         // Directions
         shooterUp.setDirection(DcMotorEx.Direction.REVERSE);
         shooterDown.setDirection(DcMotorEx.Direction.REVERSE);
-        leftSide.setDirection(DcMotorEx.Direction.FORWARD);
+        leftSide.setDirection(DcMotorEx.Direction.REVERSE); // mini needs reverse normal forward
         rightSide.setDirection(DcMotorEx.Direction.FORWARD);
         collector.setDirection(DcMotorEx.Direction.FORWARD);
         conveyor.setDirection(DcMotorEx.Direction.FORWARD);
@@ -132,7 +133,6 @@ public class Drive extends LinearOpMode {
 
         double targetVelo = Math.sqrt(gravityMagnitude * sqrdHorizontalDistanceToTarget * (1 + sqrdTargetAngleTan) /
                 (2 * (horizontalDistanceToTarget * shooterAngleToTargetTan - verticalDistanceToTarget)));
-//        double currentVelo = motor.getVelocity(AngleUnit.RADIANS);
         double shooterWheelRadius = shooterWheelRadiusStart + (shooterWheelMaxExpansion * targetVeloRadUp/ maxShooterVelo);
         double targetVeloRad = targetVelo / shooterGearRatio / shooterWheelRadius;
 
@@ -149,7 +149,6 @@ public class Drive extends LinearOpMode {
         shooterUp.setPower(0);
         shooterDown.setPower(0);
     }
-
 
     private void FIRE(){
         double horizontalDistanceToTarget = tracker.distanceToTarget(BASKET_TARGET);
@@ -168,51 +167,6 @@ public class Drive extends LinearOpMode {
         Logger.addDataDashboard("shooterDown target velocity", targetVeloRadDown);
         Logger.addDataDashboard("shooterUp target velocity", targetVeloRadUp);
     }
-
-    public void turn(double pow, double target) {
-        double wheelCirc = 2 * Math.PI * Configurable.wheelRadius;
-        double cmPer90Deg = Configurable.robotWidth * Math.PI / 2;
-        double ticksPer90Deg = cmPer90Deg / wheelCirc * Configurable.motorTicksPerRevolution;
-        double targetTicks = ticksPer90Deg * target / 90;
-        double sideTickDelta = leftSide.getCurrentPosition() - rightSide.getCurrentPosition();
-        double rotation = sideTickDelta / ticksPer90Deg * 90;
-        int direction = Math.abs(target - rotation) > 180 ? 1 : -1;
-
-        double targetLeft = leftSide.getCurrentPosition() + (targetTicks * direction);
-        double targetRight = rightSide.getCurrentPosition() - (targetTicks * direction);
-
-        leftSide.setTargetPosition((int) targetLeft);
-        rightSide.setTargetPosition((int) targetRight);
-
-        leftSide.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        rightSide.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-
-        leftSide.setPower(pow);
-        rightSide.setPower(pow);
-
-        while(Math.abs(leftSide.getCurrentPosition() - leftSide.getTargetPosition()) > 3 && Math.abs(leftSide.getCurrentPosition() - leftSide.getTargetPosition()) > 3) {
-            Logger.addDataDashboard("targetLeft", targetLeft);
-            Logger.addDataDashboard("targetRight", targetRight);
-            Logger.addDataDashboard("leftSide.getCurrentPosition()", leftSide.getCurrentPosition());
-            Logger.addDataDashboard("rightSide.getCurrentPosition()", rightSide.getCurrentPosition());
-            Logger.addDataDashboard("rotation", rotation);
-            Logger.addDataDashboard("target", target);
-            Logger.addDataDashboard("direction", direction);
-            Logger.addDataDashboard("sideTickDelta", sideTickDelta);
-            Logger.addDataDashboard("ticksPer90Deg", ticksPer90Deg);
-            Logger.addDataDashboard("targetTicks", targetTicks);
-            Logger.addDataDashboard("cmPer90Deg", cmPer90Deg);
-            Logger.addDataDashboard("wheelCirc", wheelCirc);
-            Logger.addDataDashboard("pow", pow);
-            Logger.update();
-        }
-
-        leftSide.setPower(0);
-        rightSide.setPower(0);
-        leftSide.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        rightSide.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-    }
-
 
     private void main(){
         double shooterStep = Configurable.shooterStep;
@@ -234,7 +188,7 @@ public class Drive extends LinearOpMode {
         if (gamepad1.circle) {
             if (tracker.checkInsideCircle(BASKET_TARGET, SHOOTING_CIRCLE_RADIUS)) {
                 if (tracker.checkInsideCircle(BASKET_TARGET, minimumDistanceToTarget)) {
-                    Logger.speak("Inside minimum distance");
+                    Logger.speak("Inside no-man's land");
                 }
                 else {
                     shooterActivated = !shooterActivated;
@@ -252,7 +206,7 @@ public class Drive extends LinearOpMode {
             }
             double targetAngle = tracker.angleToTarget(BASKET_TARGET);
 
-            turn(0.1, targetAngle);
+            driveTrain.turn(1, targetAngle);
         }
     }
 
@@ -294,7 +248,7 @@ public class Drive extends LinearOpMode {
 
     private void locator(){
         if (gamepad1.dpad_down){
-            tracker.setPosition(new Vector(150,0,150));
+            tracker.setPosition(new Vector(300,0,50));
         }
         else if (gamepad1.dpad_left) {
             // set current position as 0,0,0

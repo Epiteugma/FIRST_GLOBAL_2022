@@ -1,5 +1,7 @@
 package com.z3db0y.davidlib;
 
+import com.qualcomm.robotcore.hardware.DcMotor;
+
 import java.util.*;
 
 public class DriveTrain {
@@ -63,8 +65,56 @@ public class DriveTrain {
         }
     }
 
-    public void driveRobotCentric(double forwardPower, double sidePower) {
-        this.driveRobotCentric(forwardPower, sidePower, 0);
+    public boolean isBusy() {
+        for(DriveTrain.Location location : this.motors.keySet()) {
+            Motor motor = this.motors.get(location);
+            if(motor.isBusy()) return true;
+        }
+        return false;
+    }
+
+    public void turn(double pow, double target) {
+        double wheelCirc = 2 * Math.PI * 4.5;
+        double cmPer90Deg = 23.9 * Math.PI / 2;
+        double ticksPer90Deg = cmPer90Deg / wheelCirc * 560;
+        double targetTicks = ticksPer90Deg * target / 90;
+        double leftTicks = 0;
+        double rightTicks = 0;
+
+        for(DriveTrain.Location location : this.motors.keySet()) {
+            Motor motor = this.motors.get(location);
+            if(location.isLeft()) leftTicks += motor.getCurrentPosition();
+            else rightTicks += motor.getCurrentPosition();
+        }
+        double sideTickDelta = leftTicks - rightTicks;
+        double rotation = sideTickDelta / ticksPer90Deg * 90;
+        int direction = Math.abs(target - rotation) > 180 ? 1 : -1;
+
+        for(DriveTrain.Location location : this.motors.keySet()) {
+            Motor motor = this.motors.get(location);
+            if(location.isLeft()) motor.setTargetPosition(motor.getCurrentPosition() - (int) (targetTicks * direction));
+            else motor.setTargetPosition(motor.getCurrentPosition() + (int) (targetTicks * direction));
+            motor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            motor.setPower(pow);
+        }
+
+        while(this.isBusy()) {
+            Logger.addDataDashboard("target", target);
+            Logger.addDataDashboard("direction", direction);
+            Logger.addDataDashboard("sideTickDelta", sideTickDelta);
+            Logger.addDataDashboard("ticksPer90Deg", ticksPer90Deg);
+            Logger.addDataDashboard("targetTicks", targetTicks);
+            Logger.addDataDashboard("cmPer90Deg", cmPer90Deg);
+            Logger.addDataDashboard("wheelCirc", wheelCirc);
+            Logger.addDataDashboard("pow", pow);
+            Logger.update();
+        }
+
+        for(DriveTrain.Location location : this.motors.keySet()) {
+            Motor motor = this.motors.get(location);
+            motor.setPower(0);
+            motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        }
     }
 
     public Map<Location, Motor> getMotors() {
