@@ -114,6 +114,8 @@ public class Drive extends LinearOpMode {
     double verticalDistanceToTarget = Configurable.verticalDistanceToTarget;
     double shooterAngleToTarget;
     double minimumDistanceToTarget;
+    double gravityMagnitude;
+    double sqrdTargetAngleTan;
 
     long prevTime = 0;
     double targetVeloRadUp = 0;
@@ -125,9 +127,9 @@ public class Drive extends LinearOpMode {
         // D * targetAngleTan has to be bigger/equal(risky) than verticalDistanceToTarget
         minimumDistanceToTarget = verticalDistanceToTarget / shooterAngleToTargetTan;
         double sqrdHorizontalDistanceToTarget = Math.pow(horizontalDistanceToTarget, 2);
-        double sqrdTargetAngleTan = Math.pow(shooterAngleToTargetTan, 2);
+        sqrdTargetAngleTan = Math.pow(shooterAngleToTargetTan, 2);
         Acceleration gravity = imu.getGravity();
-        double gravityMagnitude = Math.sqrt(Math.pow(gravity.xAccel, 2) + Math.pow(gravity.yAccel, 2) + Math.pow(gravity.zAccel, 2));
+        gravityMagnitude = Math.sqrt(Math.pow(gravity.xAccel, 2) + Math.pow(gravity.yAccel, 2) + Math.pow(gravity.zAccel, 2));
 
         Logger.addData("Shooter angle to target: " + shooterAngleToTarget);
 
@@ -142,6 +144,14 @@ public class Drive extends LinearOpMode {
             targetVeloRadUp = targetVeloRad;
             targetVeloRadDown = targetVeloRad;
         }
+    }
+    
+    public void distanceCalculator(double veloRad){
+        double velo = veloRad * shooterGearRatio * shooterWheelRadiusStart;
+        double negativeTargetAngleTan = - Math.tan(Math.toRadians(shooterAngleToTarget));
+        double constantA = gravityMagnitude * (1+sqrdTargetAngleTan) / 2* Math.pow(velo, 2);
+        double distanceX = -negativeTargetAngleTan + Math.sqrt(Math.pow(negativeTargetAngleTan, 2) - (4 * constantA) * verticalDistanceToTarget) / 2 * constantA;
+        tracker.setPosition(new Vector(distanceX, tracker.getPosition().Y, tracker.getPosition().Z));
     }
 
     private void haltFIRE(){
