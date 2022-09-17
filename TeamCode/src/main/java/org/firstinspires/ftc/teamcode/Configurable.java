@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode;
 import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.robotcore.hardware.PIDCoefficients;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.z3db0y.davidlib.Vector;
 
 @Config
 public class Configurable {
@@ -40,4 +41,5 @@ public class Configurable {
     public static double shooterStep = 0.25;
     public static double shooterMarginOfError = 0.5;
 
+    public static Vector sinkCenterLocation = new Vector(350, 0, 300);
 }

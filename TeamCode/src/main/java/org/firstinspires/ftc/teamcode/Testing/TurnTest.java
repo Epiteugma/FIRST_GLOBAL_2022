@@ -43,8 +43,8 @@ public class TurnTest extends LinearOpMode {
         driveTrain.turn(1, 45);
 
         while (opModeIsActive()) {
-            leftSide.setPower(gamepad1.left_stick_y - gamepad1.left_stick_x);
-            rightSide.setPower(gamepad1.left_stick_y + gamepad1.left_stick_x);
+            leftSide.setPower(gamepad1.left_stick_y - gamepad1.right_stick_x);
+            rightSide.setPower(gamepad1.left_stick_y + gamepad1.right_stick_x);
         }
     }
 }
