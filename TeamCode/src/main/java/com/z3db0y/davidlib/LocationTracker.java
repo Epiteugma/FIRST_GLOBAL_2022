@@ -109,12 +109,12 @@ public class LocationTracker {
         return this.currentLocation;
     }
 
-    public double distanceToTarget(Vector target) {
+    public double distanceTo(Vector target) {
         return Math.sqrt(Math.pow(target.X - this.currentLocation.X, 2) + Math.pow(target.Z - this.currentLocation.Z, 2));
     }
 
     public boolean checkInsideCircle(Vector center, double radius) {
-        double distanceToCenter = distanceToTarget(center);
+        double distanceToCenter = distanceTo(center);
         return distanceToCenter <= radius;
     }
 

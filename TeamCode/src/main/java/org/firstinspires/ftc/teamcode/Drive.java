@@ -8,12 +8,10 @@ import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorImplEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.z3db0y.davidlib.DriveTrain;
 import com.z3db0y.davidlib.LocationTracker;
 import com.z3db0y.davidlib.Logger;
-import com.z3db0y.davidlib.Motor;
 import com.z3db0y.davidlib.Motor;
 import com.z3db0y.davidlib.Vector;
 
@@ -106,8 +104,6 @@ public class Drive extends LinearOpMode {
     boolean shooterActivated = false;
     double shooterStep = Configurable.shooterStep;
     double shooterMarginOfError = Configurable.shooterMarginOfError;
-    double minShooterVelo = Configurable.minShooterVeloRads;
-    double maxShooterVelo = Configurable.maxShooterVeloRads;
     double shooterGearRatio = Configurable.shooterGearRatio;
     double shooterWheelRadiusStart = Configurable.shooterWheelRadiusStart;
     double shooterWheelMaxExpansion = Configurable.shooterWheelMaxExpansion;
@@ -122,6 +118,7 @@ public class Drive extends LinearOpMode {
     double targetVeloRadDown = 0;
 
     public void shooterCalculator(double horizontalDistanceToTarget) {
+        double maxShooterVelo = Configurable.shooterMaxVelo;
         shooterAngleToTarget = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).secondAngle + 90; // control hub is X degrees off the way it is placed
         double shooterAngleToTargetTan = Math.tan(Math.toRadians(shooterAngleToTarget));
         // D * targetAngleTan has to be bigger/equal(risky) than verticalDistanceToTarget
@@ -161,7 +158,7 @@ public class Drive extends LinearOpMode {
     }
 
     private void FIRE(){
-        double horizontalDistanceToTarget = tracker.distanceToTarget(BASKET_TARGET);
+        double horizontalDistanceToTarget = tracker.distanceTo(BASKET_TARGET);
         shooterCalculator(horizontalDistanceToTarget);
 
         shooterUp.setVelocityPIDFCoefficients(shooterUpCoeffs.p, shooterUpCoeffs.i, shooterUpCoeffs.d, shooterUpCoeffs.f);
@@ -298,7 +295,7 @@ public class Drive extends LinearOpMode {
         Logger.addDataDashboard("|--  Y: " , tracker.getPosition().Y);
         Logger.addDataDashboard("|--  Z: " , tracker.getPosition().Z);
         Logger.addDataDashboard("|--  targetAngle: " , tracker.angleToTarget(BASKET_TARGET));
-        Logger.addDataDashboard("|--  DistanceToTarget center: ", tracker.distanceToTarget(BASKET_TARGET));
+        Logger.addDataDashboard("|--  DistanceToTarget center: ", tracker.distanceTo(BASKET_TARGET));
         Logger.addDataDashboard("|--  currentAngle: " , -imu.getAngularOrientation().firstAngle);
         Logger.addData("Booleans: ");
         Logger.addDataDashboard("|-- insideShootingCircle: ", tracker.checkInsideCircle(BASKET_TARGET, SHOOTING_CIRCLE_RADIUS));

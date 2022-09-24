@@ -23,8 +23,8 @@ public class Configurable {
 //    public static double driveGearRatio = 14.0/2.0;
 
 
-    public static PIDFCoefficients shooterUpCoeffs = new PIDFCoefficients(120, 10, 0,17.8); // PID coefficients that need to be tuned probably through FTC dashboard
-    public static PIDFCoefficients shooterDownCoeffs = new PIDFCoefficients(120, 10, 0, 17.8); // PID coefficients that need to be tuned probably through FTC dashboard
+    public static PIDFCoefficients shooterUpCoeffs = new PIDFCoefficients(120, 10, 0,20.8); // PID coefficients that need to be tuned probably through FTC dashboard
+    public static PIDFCoefficients shooterDownCoeffs = new PIDFCoefficients(120, 10, 0, 20.8); // PID coefficients that need to be tuned probably through FTC dashboard
 
     public static double heightOfTarget = 250;
     public static double horizontalDistanceToTarget = 260;
@@ -35,11 +35,11 @@ public class Configurable {
     public static double shooterWheelMaxExpansion = 0.5;
     public static double shooterGearRatio = 125.0/30.0;
 
-    public static double maxShooterVeloRads = 11.5;
-    public static double minShooterVeloRads = 7.5;
-    public static double radsAdditionRange = maxShooterVeloRads - minShooterVeloRads;
-    public static double shooterStep = 0.25;
+    public static double shooterMaxVelo = 11.2;
+    public static double shooterMinVelo = 7;
+    public static double radsAdditionRange = shooterMaxVelo - shooterMinVelo;
+    public static double shooterStep = 0.15;
     public static double shooterMarginOfError = 0.5;
 
-    public static Vector sinkCenterLocation = new Vector(350, 0, 300);
+    public static Vector sinkCenterLocation = new Vector(300, 250, 350);
 }
