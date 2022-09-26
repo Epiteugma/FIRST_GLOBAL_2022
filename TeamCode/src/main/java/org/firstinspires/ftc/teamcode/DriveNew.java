@@ -35,6 +35,7 @@ public class DriveNew extends LinearOpMode {
     BNO055IMU imu;
 
     enum Toggles {
+//        SLIDE,
         SHOOTER,
         COLLECTOR;
 
@@ -89,6 +90,8 @@ public class DriveNew extends LinearOpMode {
 
     void initSelf() {
         toggles.add(Toggles.COLLECTOR);
+        toggles.add(Toggles.SHOOTER);
+//        toggles.add(Toggles.SLIDE);
         Logger.setTelemetry(new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry()));
         this.initMotors();
         this.initLocator();
@@ -124,6 +127,8 @@ public class DriveNew extends LinearOpMode {
             toggler.toggle(Toggles.SHOOTER);
         }
         Toggles.SHOOTER.prevState = gamepad1.a ? 1 : 0;
+        Toggles.COLLECTOR.prevState = gamepad1.b ? 1 : 0;
+//        Toggles.SLIDE.prevState = gamepad2.b ? 1 : 0;
     }
 
     void checkShooterValidity() {
@@ -144,18 +149,17 @@ public class DriveNew extends LinearOpMode {
         Logger.addDataDashboard("TARGETVELORAD", velocity);
 
 
-//        motors.get("shooterUp").setPIDFCoefficients(RunMode.RUN_USING_ENCODER, shooterUpPID);
-//        motors.get("shooterDown").setPIDFCoefficients(RunMode.RUN_USING_ENCODER, shooterDownPID);
+        motors.get("shooterUp").setPIDFCoefficients(RunMode.RUN_USING_ENCODER, shooterUpPID);
+        motors.get("shooterDown").setPIDFCoefficients(RunMode.RUN_USING_ENCODER, shooterDownPID);
 
-//        if(toggles.contains(Toggles.SHOOTER)) {
+        if(toggles.contains(Toggles.SHOOTER)) {
             motors.get("shooterUp").setVelocity(velocity, AngleUnit.RADIANS);
             motors.get("shooterDown").setVelocity(velocity, AngleUnit.RADIANS);
-//        motors.get("shooterDown").setPower(0.7);
-//        }
-//        else {
-//            motors.get("shooterUp").setPower(0);
-//            motors.get("shooterDown").setPower(0);
-//        }
+        }
+        else {
+            motors.get("shooterUp").setPower(0);
+            motors.get("shooterDown").setPower(0);
+        }
     }
 
     double calculateShooterVelocity() {
@@ -167,7 +171,8 @@ public class DriveNew extends LinearOpMode {
         double horizontalDistanceToTarget = tracker.distanceTo(sinkCenterLocation);
         Logger.addDataDashboard("horizontalDistanceToTarget", horizontalDistanceToTarget);
         Logger.addDataDashboard("veloUp", motors.get("shooterUp").getVelocity());
-        double shooterAngleToTarget = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).secondAngle + 90; // control hub is 90 degrees off the way it is placed
+//        double shooterAngleToTarget = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).secondAngle + 90; // control hub is 90 degrees off the way it is placed
+        double shooterAngleToTarget = 35.0;
         double shooterAngleToTargetTan = Math.tan(Math.toRadians(shooterAngleToTarget));
         // D * targetAngleTan has to be bigger/equal(risky) than verticalDistanceToTarget
         minimumDistanceToTarget = verticalDistanceToTarget / shooterAngleToTargetTan;
@@ -188,11 +193,23 @@ public class DriveNew extends LinearOpMode {
     }
 
     void collector() {
+        motors.get("collector").setPower(1);
+//       motors.get("collector").setPower(toggles.contains(Toggles.COLLECTOR) ? 1 : 0);
         if(toggles.contains(Toggles.COLLECTOR)) {
             motors.get("collector").setPower(1);
-        } else {
+        }
+        else {
             motors.get("collector").setPower(0);
         }
+    }
+
+    void slide() {
+//        if(toggles.contains(Toggles.SLIDE)) {
+//            motors.get("slide").setPower(1);
+//        }
+//        else {
+//            motors.get("slide").setPower(0);
+//        }
     }
 
     void conveyor() {
@@ -254,6 +271,7 @@ public class DriveNew extends LinearOpMode {
             drive(gamepad1.left_stick_y, gamepad1.right_stick_x);
             shooter();
             collector();
+            slide();
             conveyor();
 
             toggles();
