@@ -13,6 +13,7 @@ public class Motor extends DcMotorImplEx {
 
     public void holdPosition() {
         if(hold && this.getPower() == 0) {
+            System.out.println("holdPos true");
             this.setTargetPosition(this.getCurrentPosition());
             this.setMode(RunMode.RUN_TO_POSITION);
             super.setPower(1);
@@ -33,7 +34,6 @@ public class Motor extends DcMotorImplEx {
     public void setMode(RunMode runMode) {
         this.runMode = runMode;
         super.setMode(runMode);
-        holdPosition();
     }
 
     public RunMode getMode() {

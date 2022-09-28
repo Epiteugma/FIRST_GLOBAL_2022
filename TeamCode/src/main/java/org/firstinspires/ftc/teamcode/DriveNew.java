@@ -35,11 +35,13 @@ public class DriveNew extends LinearOpMode {
     BNO055IMU imu;
 
     enum Toggles {
-//        SLIDE,
+        HOOK,
+        SLIDE,
+        CONVEYOR,
         SHOOTER,
         COLLECTOR;
 
-        public double prevState = 0;
+        public boolean prevState;
     }
 
     void initMotors() {
@@ -49,6 +51,8 @@ public class DriveNew extends LinearOpMode {
         motors.put("shooterDown", new Motor(hardwareMap.get(DcMotorImplEx.class, "shooterDown")));
         motors.put("conveyor", new Motor(hardwareMap.get(DcMotorImplEx.class, "conveyor")));
         motors.put("collector", new Motor(hardwareMap.get(DcMotorImplEx.class, "collector")));
+        motors.put("slide", new Motor(hardwareMap.get(DcMotorImplEx.class, "slide")));
+        motors.put("hook", new Motor(hardwareMap.get(DcMotorImplEx.class, "hook")));
 
         motors.forEach((name, motor) -> {
             motor.setMode(RunMode.STOP_AND_RESET_ENCODER);
@@ -90,8 +94,10 @@ public class DriveNew extends LinearOpMode {
 
     void initSelf() {
         toggles.add(Toggles.COLLECTOR);
-        toggles.add(Toggles.SHOOTER);
+//        toggles.add(Toggles.SHOOTER);
 //        toggles.add(Toggles.SLIDE);
+//        toggles.add(Toggles.HOOK);
+        toggles.add(Toggles.CONVEYOR);
         Logger.setTelemetry(new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry()));
         this.initMotors();
         this.initLocator();
@@ -108,6 +114,12 @@ public class DriveNew extends LinearOpMode {
 
     void toggles() {
         class Toggler {
+            final int debounceTime;
+
+            public Toggler(int debounceTime) {
+                this.debounceTime = debounceTime;
+            }
+
             public void toggle(Toggles toggle) {
                 if(toggles.contains(toggle)) toggles.remove(toggle);
                 else toggles.add(toggle);
@@ -118,17 +130,34 @@ public class DriveNew extends LinearOpMode {
                 if(cond instanceof Number) pass = ((Number) cond).doubleValue() > 0;
                 else if(cond instanceof Boolean) pass = (boolean) cond;
 
-                return pass && toggle.prevState == 0;
+                boolean valid = pass && !toggle.prevState;
+
+                if(valid) {
+                    toggle.prevState = true;
+                } else if(!pass) {
+                    toggle.prevState = false;
+                }
+
+                return valid;
             }
         }
 
-        Toggler toggler = new Toggler();
-        if(toggler.check(gamepad1.a, Toggles.SHOOTER)) {
+        Toggler toggler = new Toggler(Configurable.debounceTime);
+        if(toggler.check(gamepad1.right_bumper, Toggles.SHOOTER)) {
             toggler.toggle(Toggles.SHOOTER);
         }
-        Toggles.SHOOTER.prevState = gamepad1.a ? 1 : 0;
-        Toggles.COLLECTOR.prevState = gamepad1.b ? 1 : 0;
-//        Toggles.SLIDE.prevState = gamepad2.b ? 1 : 0;
+        else if(toggler.check(gamepad1.dpad_up, Toggles.SLIDE)) {
+            toggler.toggle(Toggles.SLIDE);
+        }
+        else if(toggler.check(gamepad1.circle, Toggles.COLLECTOR)) {
+            toggler.toggle(Toggles.COLLECTOR);
+        }
+        else if(toggler.check(gamepad2.dpad_down, Toggles.HOOK)){
+            toggler.toggle(Toggles.HOOK);
+        }
+        else if(toggler.check(gamepad2.triangle, Toggles.CONVEYOR)){
+            toggler.toggle(Toggles.CONVEYOR);
+        }
     }
 
     void checkShooterValidity() {
@@ -136,7 +165,8 @@ public class DriveNew extends LinearOpMode {
             if(!tracker.checkInsideCircle(sinkCenterLocation, SHOOTING_CIRCLE_RADIUS)) {
                 Logger.addDataDashboard("insideShootingCircle", "false");
                 toggles.remove(Toggles.SHOOTER);
-            } else Logger.addDataDashboard("insideShootingCircle", "true");
+            }
+            else Logger.addDataDashboard("insideShootingCircle", "true");
         }
     }
 
@@ -172,7 +202,7 @@ public class DriveNew extends LinearOpMode {
         Logger.addDataDashboard("horizontalDistanceToTarget", horizontalDistanceToTarget);
         Logger.addDataDashboard("veloUp", motors.get("shooterUp").getVelocity());
 //        double shooterAngleToTarget = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).secondAngle + 90; // control hub is 90 degrees off the way it is placed
-        double shooterAngleToTarget = 35.0;
+        double shooterAngleToTarget = 69.0;
         double shooterAngleToTargetTan = Math.tan(Math.toRadians(shooterAngleToTarget));
         // D * targetAngleTan has to be bigger/equal(risky) than verticalDistanceToTarget
         minimumDistanceToTarget = verticalDistanceToTarget / shooterAngleToTargetTan;
@@ -193,8 +223,6 @@ public class DriveNew extends LinearOpMode {
     }
 
     void collector() {
-        motors.get("collector").setPower(1);
-//       motors.get("collector").setPower(toggles.contains(Toggles.COLLECTOR) ? 1 : 0);
         if(toggles.contains(Toggles.COLLECTOR)) {
             motors.get("collector").setPower(1);
         }
@@ -204,16 +232,30 @@ public class DriveNew extends LinearOpMode {
     }
 
     void slide() {
-//        if(toggles.contains(Toggles.SLIDE)) {
-//            motors.get("slide").setPower(1);
-//        }
-//        else {
-//            motors.get("slide").setPower(0);
-//        }
+        if(toggles.contains(Toggles.SLIDE)) {
+            motors.get("slide").setPower(1);
+        }
+        else {
+            motors.get("slide").setPower(0);
+        }
+    }
+
+    void hook() {
+        if(toggles.contains(Toggles.HOOK)) {
+            motors.get("hook").setPower(1);
+        }
+        else {
+            motors.get("hook").setPower(0);
+        }
     }
 
     void conveyor() {
-        motors.get("conveyor").setPower(-1);
+        if(toggles.contains(Toggles.CONVEYOR)) {
+            motors.get("conveyor").setPower(-1);
+        }
+        else {
+            motors.get("conveyor").setPower(0);
+        }
     }
 
     void logging() {
