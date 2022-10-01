@@ -31,17 +31,17 @@ public class Configurable {
     public static double groundToShooterCenter = 40;
     public static double verticalDistanceToTarget = heightOfTarget - groundToShooterCenter;
 
+    public static double paragondas = 1.45;
     public static double shooterWheelRadiusStart = 2.5;
-    public static double shooterWheelMaxExpansion = 0.5;
-    public static double shooterGearRatio = 125.0/30.0 * 2.1;
+    public static double shooterWheelMaxExpansion = 2;
+    public static double shooterGearRatio = 90.0/30.0;
+    public static int shooterMaxVelo = 2500;
+    public static double shooterAngle = 60.0;
 
-    public static double shooterMaxVelo = 11.2;
-    public static double shooterMinVelo = 7;
-    public static double radsAdditionRange = shooterMaxVelo - shooterMinVelo;
+    public static double ballHeight = 9;
+
     public static double shooterStep = 0.15;
     public static double shooterMarginOfError = 0.5;
-
-    public static int debounceTime = 100;
 
     public static Vector sinkCenterLocation = new Vector(300, 250, 350);
 }

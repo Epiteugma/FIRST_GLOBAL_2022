@@ -10,7 +10,7 @@ public class LocationTracker {
     int motorTicksPerRevolution;
     double robotWidth;
     double wheelRadius;
-    Vector currentLocation = new Vector(0, 0, 0);
+    public Vector currentLocation = new Vector(0, 0, 0);
     Telemetry telemetry;
     int lastLeftTickSum = 0;
     int lastRightTickSum = 0;

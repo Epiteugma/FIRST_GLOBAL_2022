@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -8,27 +9,34 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorImplEx;
 import com.qualcomm.robotcore.hardware.DcMotor.RunMode;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.z3db0y.davidlib.DriveTrain;
 import com.z3db0y.davidlib.LocationTracker;
 import com.z3db0y.davidlib.Logger;
 import com.z3db0y.davidlib.Motor;
 import com.z3db0y.davidlib.Vector;
 
-import org.firstinspires.ftc.robotcore.external.navigation.Acceleration;
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
-import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
-
 import java.util.*;
 
 @TeleOp(name = "FGC22", group = "FGC22")
 public class DriveNew extends LinearOpMode {
+    Map<String, Toggles>[] keyMap = new Map[]{
+            // Gamepad 1
+            new HashMap<String, Toggles>() {{
+                put("right_bumper", Toggles.SHOOTER);
+                put("dpad_up", Toggles.SLIDE);
+                put("circle", Toggles.COLLECTOR);
+            }},
+            // Gamepad 2
+            new HashMap<String, Toggles>() {{
+                put("dpad_down", Toggles.HOOK);
+                put("triangle", Toggles.CONVEYOR);
+            }}
+    };
+
     Map<String, Motor> motors = new HashMap<>();
     List<Toggles> toggles = new ArrayList<>();
     DriveTrain driveTrain;
     LocationTracker tracker;
-    Vector location;
     Vector sinkCenterLocation = Configurable.sinkCenterLocation;
     double SHOOTING_CIRCLE_RADIUS = 250;
     double minimumDistanceToTarget;
@@ -39,7 +47,8 @@ public class DriveNew extends LinearOpMode {
         SLIDE,
         CONVEYOR,
         SHOOTER,
-        COLLECTOR;
+        COLLECTOR,
+        EATING;
 
         public boolean prevState;
     }
@@ -70,10 +79,9 @@ public class DriveNew extends LinearOpMode {
 
     void initLocator() {
         tracker = new LocationTracker();
-        location = tracker.getPosition();
-        location.X = 25;
-        location.Y = 33;
-        location.Z = 25;
+        tracker.currentLocation.X = 25;
+        tracker.currentLocation.Y = 33;
+        tracker.currentLocation.Z = 25;
 
         LocationTracker.Parameters params = new LocationTracker.Parameters();
         params.wheelRadius = Configurable.wheelRadius;
@@ -105,7 +113,7 @@ public class DriveNew extends LinearOpMode {
     }
 
     void track() {
-        location = tracker.updatePosition(imu.getAngularOrientation().firstAngle);
+        tracker.updatePosition(imu.getAngularOrientation().firstAngle);
     }
 
     void drive(double left_stick_y, double right_stick_x) {
@@ -114,11 +122,6 @@ public class DriveNew extends LinearOpMode {
 
     void toggles() {
         class Toggler {
-            final int debounceTime;
-
-            public Toggler(int debounceTime) {
-                this.debounceTime = debounceTime;
-            }
 
             public void toggle(Toggles toggle) {
                 if(toggles.contains(toggle)) toggles.remove(toggle);
@@ -142,22 +145,18 @@ public class DriveNew extends LinearOpMode {
             }
         }
 
-        Toggler toggler = new Toggler(Configurable.debounceTime);
-        if(toggler.check(gamepad1.right_bumper, Toggles.SHOOTER)) {
-            toggler.toggle(Toggles.SHOOTER);
-        }
-        else if(toggler.check(gamepad1.dpad_up, Toggles.SLIDE)) {
-            toggler.toggle(Toggles.SLIDE);
-        }
-        else if(toggler.check(gamepad1.circle, Toggles.COLLECTOR)) {
-            toggler.toggle(Toggles.COLLECTOR);
-        }
-        else if(toggler.check(gamepad2.dpad_down, Toggles.HOOK)){
-            toggler.toggle(Toggles.HOOK);
-        }
-        else if(toggler.check(gamepad2.triangle, Toggles.CONVEYOR)){
-            toggler.toggle(Toggles.CONVEYOR);
-        }
+        Toggler toggler = new Toggler();
+        try {
+            for (Map<String, Toggles> map : keyMap) {
+                for (int i1 = 0; i1 < map.size(); i1++) {
+                    String key = (String) map.keySet().toArray()[i1];
+                    Toggles toggle = map.get(key);
+                    if (toggler.check(gamepad1.getClass().getField(key).get(gamepad1), toggle)) {
+                        toggler.toggle(toggle);
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
     }
 
     void checkShooterValidity() {
@@ -173,18 +172,20 @@ public class DriveNew extends LinearOpMode {
     void shooter() {
         checkShooterValidity();
 
-        PIDFCoefficients shooterUpPID = Configurable.shooterUpCoeffs;
-        PIDFCoefficients shooterDownPID = Configurable.shooterDownCoeffs;
+//        PIDFCoefficients shooterUpPID = Configurable.shooterUpCoeffs;
+//        PIDFCoefficients shooterDownPID = Configurable.shooterDownCoeffs;
         double velocity = this.calculateShooterVelocity();
-        Logger.addDataDashboard("TARGETVELORAD", velocity);
+        Logger.addDataDashboard("TARGET VELOCITY (ticks/sec)", velocity);
 
 
-        motors.get("shooterUp").setPIDFCoefficients(RunMode.RUN_USING_ENCODER, shooterUpPID);
-        motors.get("shooterDown").setPIDFCoefficients(RunMode.RUN_USING_ENCODER, shooterDownPID);
+//        motors.get("shooterUp").setPIDFCoefficients(RunMode.RUN_USING_ENCODER, shooterUpPID);
+//        motors.get("shooterDown").setPIDFCoefficients(RunMode.RUN_USING_ENCODER, shooterDownPID);
 
         if(toggles.contains(Toggles.SHOOTER)) {
-            motors.get("shooterUp").setVelocity(velocity, AngleUnit.RADIANS);
-            motors.get("shooterDown").setVelocity(velocity, AngleUnit.RADIANS);
+//            motors.get("shooterUp").setVelocity(velocity, AngleUnit.RADIANS);
+//            motors.get("shooterDown").setVelocity(velocity, AngleUnit.RADIANS);
+            motors.get("shooterUp").setVelocity(velocity);
+            motors.get("shooterDown").setVelocity(velocity);
         }
         else {
             motors.get("shooterUp").setPower(0);
@@ -192,39 +193,67 @@ public class DriveNew extends LinearOpMode {
         }
     }
 
+//    double calculateShooterVelocity() {
+//        double shooterGearRatio = Configurable.shooterGearRatio;
+//        double shooterWheelRadiusStart = Configurable.shooterWheelRadiusStart;
+//        double shooterWheelMaxExpansion = Configurable.shooterWheelMaxExpansion;
+//        double shooterMaxVelo = Configurable.shooterMaxVelo;
+//        double verticalDistanceToTarget = sinkCenterLocation.Y - location.Y;
+//        double horizontalDistanceToTarget = tracker.distanceTo(sinkCenterLocation);
+//        Logger.addDataDashboard("horizontalDistanceToTarget", horizontalDistanceToTarget);
+//        Logger.addDataDashboard("veloUp", motors.get("shooterUp").getVelocity());
+////        double shooterAngleToTarget = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).secondAngle + 90; // control hub is 90 degrees off the way it is placed
+//        double shooterAngleToTarget = 69.0;
+//        double shooterAngleToTargetTan = Math.tan(Math.toRadians(shooterAngleToTarget));
+//        // D * targetAngleTan has to be bigger/equal(risky) than verticalDistanceToTarget
+//        minimumDistanceToTarget = verticalDistanceToTarget / shooterAngleToTargetTan;
+//        double sqrdHorizontalDistanceToTarget = Math.pow(horizontalDistanceToTarget, 2);
+//        double sqrdTargetAngleTan = Math.pow(shooterAngleToTargetTan, 2);
+//        Acceleration gravity = imu.getGravity();
+//        double gravityMagnitude = Math.sqrt(Math.pow(gravity.xAccel, 2) + Math.pow(gravity.yAccel, 2) + Math.pow(gravity.zAccel, 2));
+//
+//        Logger.addData("Shooter angle to target: " + shooterAngleToTarget);
+//
+//        double targetVelo = Math.sqrt(gravityMagnitude * sqrdHorizontalDistanceToTarget * (1 + sqrdTargetAngleTan) /
+//                (2 * (horizontalDistanceToTarget * shooterAngleToTargetTan - verticalDistanceToTarget)));
+//        double shooterWheelRadius = shooterWheelRadiusStart + (shooterWheelMaxExpansion * motors.get("shooterUp").getVelocity(AngleUnit.RADIANS) / shooterMaxVelo);
+//        double targetVeloRad = targetVelo / shooterGearRatio / shooterWheelRadius;
+//
+//        Logger.addDataDashboard("targetVelo / shooterGearRatio / shooterWheelRadius: " + targetVelo + "/" , shooterGearRatio + "/" + shooterWheelRadius + "=" + targetVeloRad);
+//        return targetVeloRad;
+//    }
+
     double calculateShooterVelocity() {
         double shooterGearRatio = Configurable.shooterGearRatio;
         double shooterWheelRadiusStart = Configurable.shooterWheelRadiusStart;
         double shooterWheelMaxExpansion = Configurable.shooterWheelMaxExpansion;
         double shooterMaxVelo = Configurable.shooterMaxVelo;
-        double verticalDistanceToTarget = sinkCenterLocation.Y - location.Y;
-        double horizontalDistanceToTarget = tracker.distanceTo(sinkCenterLocation);
-        Logger.addDataDashboard("horizontalDistanceToTarget", horizontalDistanceToTarget);
-        Logger.addDataDashboard("veloUp", motors.get("shooterUp").getVelocity());
-//        double shooterAngleToTarget = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).secondAngle + 90; // control hub is 90 degrees off the way it is placed
-        double shooterAngleToTarget = 69.0;
-        double shooterAngleToTargetTan = Math.tan(Math.toRadians(shooterAngleToTarget));
-        // D * targetAngleTan has to be bigger/equal(risky) than verticalDistanceToTarget
-        minimumDistanceToTarget = verticalDistanceToTarget / shooterAngleToTargetTan;
-        double sqrdHorizontalDistanceToTarget = Math.pow(horizontalDistanceToTarget, 2);
-        double sqrdTargetAngleTan = Math.pow(shooterAngleToTargetTan, 2);
-        Acceleration gravity = imu.getGravity();
-        double gravityMagnitude = Math.sqrt(Math.pow(gravity.xAccel, 2) + Math.pow(gravity.yAccel, 2) + Math.pow(gravity.zAccel, 2));
 
-        Logger.addData("Shooter angle to target: " + shooterAngleToTarget);
+        double shooterWheelRadius = shooterWheelRadiusStart + (shooterWheelMaxExpansion * Math.abs(motors.get("shooterUp").getVelocity()) / shooterMaxVelo);
 
-        double targetVelo = Math.sqrt(gravityMagnitude * sqrdHorizontalDistanceToTarget * (1 + sqrdTargetAngleTan) /
-                (2 * (horizontalDistanceToTarget * shooterAngleToTargetTan - verticalDistanceToTarget)));
-        double shooterWheelRadius = shooterWheelRadiusStart + (shooterWheelMaxExpansion * motors.get("shooterUp").getVelocity(AngleUnit.RADIANS) / shooterMaxVelo);
-        double targetVeloRad = targetVelo / shooterGearRatio / shooterWheelRadius;
+        double verticalDistanceToTarget = (sinkCenterLocation.Y - tracker.currentLocation.Y + Configurable.ballHeight) / 100;
+        double horizontalDistanceToTarget = (tracker.distanceTo(sinkCenterLocation) - 60) / 100;
 
-        Logger.addDataDashboard("targetVelo / shooterGearRatio / shooterWheelRadius: " + targetVelo + "/" , shooterGearRatio + "/" + shooterWheelRadius + "=" + targetVeloRad);
-        return targetVeloRad;
+        double angleToTarget = Configurable.shooterAngle;
+        double gravity = Math.sqrt(
+                Math.pow(imu.getGravity().xAccel, 2) +
+                Math.pow(imu.getGravity().yAccel, 2) +
+                Math.pow(imu.getGravity().zAccel, 2)
+        );
+
+        double paragondas = Configurable.paragondas;
+
+//        double targetDistanceVelo = 0.8 * (Math.tan(Math.toRadians(angleToTarget)) * horizontalDistanceToTarget + (gravity * Math.pow(horizontalDistanceToTarget, 2) / 2 * verticalDistanceToTarget * Math.cos(Math.toRadians(angleToTarget))));
+        double targetDistanceVelo = paragondas * Math.sqrt(gravity * Math.pow(horizontalDistanceToTarget, 2) * (1 + Math.pow(Math.tan(Math.toRadians(angleToTarget)), 2)) /
+                (2 * (horizontalDistanceToTarget * Math.tan(Math.toRadians(angleToTarget)) - verticalDistanceToTarget)));
+        Logger.addDataDashboard("TDV", targetDistanceVelo);
+
+        return (targetDistanceVelo * 100) / (2 * Math.PI * shooterWheelRadius) * (28 / shooterGearRatio); // ticks/sec
     }
 
     void collector() {
         if(toggles.contains(Toggles.COLLECTOR)) {
-            motors.get("collector").setPower(1);
+            motors.get("collector").setPower(-1);
         }
         else {
             motors.get("collector").setPower(0);
@@ -267,8 +296,8 @@ public class DriveNew extends LinearOpMode {
         Logger.addDataDashboard("|--  Collector power: " , motors.get("collector").getPower());
         Logger.addDataDashboard("|--  ShooterUp power: " , motors.get("shooterUp").getPower());
         Logger.addDataDashboard("|--  ShooterDown power: " , motors.get("shooterDown").getPower());
-        Logger.addDataDashboard("|--  ShooterUp velocity in radians: " , motors.get("shooterUp").getVelocity(AngleUnit.RADIANS));
-        Logger.addDataDashboard("|--  ShooterDown velocity in radians: " , motors.get("shooterDown").getVelocity(AngleUnit.RADIANS));
+        Logger.addDataDashboard("|--  ShooterUp velocity: " , motors.get("shooterUp").getVelocity());
+        Logger.addDataDashboard("|--  ShooterDown velocity: " , motors.get("shooterDown").getVelocity());
         Logger.addData("Ticks:");
         Logger.addDataDashboard("|--  RightSide ticks: " , motors.get("rightSide").getCurrentPosition());
         Logger.addDataDashboard("|--  LeftSide ticks: " , motors.get("leftSide").getCurrentPosition());
@@ -297,8 +326,8 @@ public class DriveNew extends LinearOpMode {
 
     void vectorControl() {
         if(gamepad1.dpad_down) {
-            location.X = 50;
-            location.Z = 350;
+            tracker.currentLocation.X = 75;
+            tracker.currentLocation.Z = 350;
         }
     }
 
