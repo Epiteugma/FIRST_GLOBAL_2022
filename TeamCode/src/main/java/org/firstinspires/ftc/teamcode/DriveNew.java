@@ -1,7 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.acmerobotics.dashboard.FtcDashboard;
-import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -23,11 +22,11 @@ public class DriveNew extends LinearOpMode {
             // Gamepad 1
             new HashMap<String, Toggles>() {{
                 put("right_bumper", Toggles.SHOOTER);
-                put("dpad_up", Toggles.SLIDE);
                 put("circle", Toggles.COLLECTOR);
             }},
             // Gamepad 2
             new HashMap<String, Toggles>() {{
+                put("dpad_up", Toggles.SLIDE);
                 put("dpad_down", Toggles.HOOK);
                 put("triangle", Toggles.CONVEYOR);
             }}
@@ -79,9 +78,9 @@ public class DriveNew extends LinearOpMode {
 
     void initLocator() {
         tracker = new LocationTracker();
-        tracker.currentLocation.X = 25;
-        tracker.currentLocation.Y = 33;
-        tracker.currentLocation.Z = 25;
+        tracker.currentLocation.X = Configurable.robotDepth / 2;
+        tracker.currentLocation.Y = Configurable.robotHeight / 2 + Configurable.centerToShooter;
+        tracker.currentLocation.Z = Configurable.robotWidth / 2;
 
         LocationTracker.Parameters params = new LocationTracker.Parameters();
         params.wheelRadius = Configurable.wheelRadius;
@@ -177,13 +176,7 @@ public class DriveNew extends LinearOpMode {
         double velocity = this.calculateShooterVelocity();
         Logger.addDataDashboard("TARGET VELOCITY (ticks/sec)", velocity);
 
-
-//        motors.get("shooterUp").setPIDFCoefficients(RunMode.RUN_USING_ENCODER, shooterUpPID);
-//        motors.get("shooterDown").setPIDFCoefficients(RunMode.RUN_USING_ENCODER, shooterDownPID);
-
         if(toggles.contains(Toggles.SHOOTER)) {
-//            motors.get("shooterUp").setVelocity(velocity, AngleUnit.RADIANS);
-//            motors.get("shooterDown").setVelocity(velocity, AngleUnit.RADIANS);
             motors.get("shooterUp").setVelocity(velocity);
             motors.get("shooterDown").setVelocity(velocity);
         }
@@ -231,7 +224,7 @@ public class DriveNew extends LinearOpMode {
 
         double shooterWheelRadius = shooterWheelRadiusStart + (shooterWheelMaxExpansion * Math.abs(motors.get("shooterUp").getVelocity()) / shooterMaxVelo);
 
-        double verticalDistanceToTarget = (sinkCenterLocation.Y - tracker.currentLocation.Y + Configurable.ballHeight) / 100;
+        double verticalDistanceToTarget = (sinkCenterLocation.Y - tracker.currentLocation.Y + Configurable.ballDiameter) / 100; //maybe add 60/2???
         double horizontalDistanceToTarget = (tracker.distanceTo(sinkCenterLocation) - 60) / 100;
 
         double angleToTarget = Configurable.shooterAngle;
@@ -271,7 +264,7 @@ public class DriveNew extends LinearOpMode {
 
     void hook() {
         if(toggles.contains(Toggles.HOOK)) {
-            motors.get("hook").setPower(1);
+            motors.get("hook").setPower(-1);
         }
         else {
             motors.get("hook").setPower(0);
@@ -279,6 +272,8 @@ public class DriveNew extends LinearOpMode {
     }
 
     void conveyor() {
+//        double avgVelo = motors.get("shooterUp").getVelocity() + motors.get("shooterDown").getVelocity() / 2;
+//        if
         if(toggles.contains(Toggles.CONVEYOR)) {
             motors.get("conveyor").setPower(-1);
         }
@@ -289,13 +284,14 @@ public class DriveNew extends LinearOpMode {
 
     void logging() {
         Logger.addData("Powers:");
-//        Logger.addDataDashboard("|--  GlobalPowerFactor: " , globalPowerFactor);
         Logger.addDataDashboard("|--  Right Side power: " , motors.get("rightSide").getPower());
         Logger.addDataDashboard("|--  Left Side power: " , motors.get("leftSide").getPower());
         Logger.addDataDashboard("|--  Conveyor power: " , motors.get("conveyor").getPower());
         Logger.addDataDashboard("|--  Collector power: " , motors.get("collector").getPower());
         Logger.addDataDashboard("|--  ShooterUp power: " , motors.get("shooterUp").getPower());
         Logger.addDataDashboard("|--  ShooterDown power: " , motors.get("shooterDown").getPower());
+        Logger.addDataDashboard("|--  Slide power: " , motors.get("slide").getPower());
+        Logger.addDataDashboard("|--  Hook power: " , motors.get("hook").getPower());
         Logger.addDataDashboard("|--  ShooterUp velocity: " , motors.get("shooterUp").getVelocity());
         Logger.addDataDashboard("|--  ShooterDown velocity: " , motors.get("shooterDown").getVelocity());
         Logger.addData("Ticks:");
@@ -308,8 +304,6 @@ public class DriveNew extends LinearOpMode {
         Logger.addData("Info (usually variables):");
 //        Logger.addDataDashboard("|--  shooter step: " , shooterStep);
 //        Logger.addDataDashboard("|--  prevTime: " , prevTime);
-//        Logger.addDataDashboard("|--  ShooterUp target velocity in radians: " , targetVeloRad);
-//        Logger.addDataDashboard("|--  ShooterDown target velocity in radians: " , targetVeloRad);
         Logger.addData("Position:");
         Logger.addDataDashboard("|--  X: " , tracker.getPosition().X);
         Logger.addDataDashboard("|--  Y: " , tracker.getPosition().Y);
@@ -320,7 +314,6 @@ public class DriveNew extends LinearOpMode {
         Logger.addData("Booleans: ");
         Logger.addDataDashboard("|-- insideShootingCircle: ", tracker.checkInsideCircle(sinkCenterLocation, SHOOTING_CIRCLE_RADIUS));
         Logger.addDataDashboard("|-- Inside no-man's land: ", tracker.checkInsideCircle(sinkCenterLocation, minimumDistanceToTarget));
-//        Logger.addDataDashboard("|-- shooterActivated: ", shooterActivated);
         Logger.update();
     }
 
@@ -343,6 +336,7 @@ public class DriveNew extends LinearOpMode {
             shooter();
             collector();
             slide();
+            hook();
             conveyor();
 
             toggles();
