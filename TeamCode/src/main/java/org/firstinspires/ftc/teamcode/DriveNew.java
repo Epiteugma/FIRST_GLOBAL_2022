@@ -26,8 +26,10 @@ public class DriveNew extends LinearOpMode {
             }},
             // Gamepad 2
             new HashMap<String, Toggles>() {{
-                put("dpad_up", Toggles.SLIDE);
-                put("dpad_down", Toggles.HOOK);
+                put("dpad_up", Toggles.SLIDE_UP);
+                put("dpad_down", Toggles.SLIDE_DOWN);
+		put("right_trigger", Toggles.HOOK_UP);
+		put("left_trigger", Toggles.HOOK_DOWN);
                 put("triangle", Toggles.CONVEYOR);
             }}
     };
@@ -42,8 +44,10 @@ public class DriveNew extends LinearOpMode {
     BNO055IMU imu;
 
     enum Toggles {
-        HOOK,
-        SLIDE,
+        HOOK_UP,
+	HOOK_DOWN,
+        SLIDE_UP,
+	SLIDE_DOWN,
         CONVEYOR,
         SHOOTER,
         COLLECTOR,
@@ -254,18 +258,24 @@ public class DriveNew extends LinearOpMode {
     }
 
     void slide() {
-        if(toggles.contains(Toggles.SLIDE)) {
+        if(toggles.contains(Toggles.SLIDE_UP)) {
             motors.get("slide").setPower(1);
         }
+	else if(toggles.contains(Toggles.SLIDE_DOWN)) {
+            motors.get("slide").setPower(-1);
+	}
         else {
             motors.get("slide").setPower(0);
         }
     }
 
     void hook() {
-        if(toggles.contains(Toggles.HOOK)) {
-            motors.get("hook").setPower(-1);
+        if(toggles.contains(Toggles.HOOK_UP)) {
+            motors.get("hook").setPower(gamepad2.right_trigger);
         }
+	else if(toggles.contains(Toggles.HOOK_DOWN)) {
+            motors.get("hook").setPower(-gamepad2.left_trigger);
+	}
         else {
             motors.get("hook").setPower(0);
         }
