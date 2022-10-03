@@ -8,6 +8,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorImplEx;
 import com.qualcomm.robotcore.hardware.DcMotor.RunMode;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Gamepad;
 import com.z3db0y.davidlib.DriveTrain;
 import com.z3db0y.davidlib.LocationTracker;
 import com.z3db0y.davidlib.Logger;
@@ -28,8 +29,8 @@ public class DriveNew extends LinearOpMode {
             new HashMap<String, Toggles>() {{
                 put("dpad_up", Toggles.SLIDE_UP);
                 put("dpad_down", Toggles.SLIDE_DOWN);
-		put("right_trigger", Toggles.HOOK_UP);
-		put("left_trigger", Toggles.HOOK_DOWN);
+                put("right_trigger", Toggles.HOOK_UP);
+                put("left_trigger", Toggles.HOOK_DOWN);
                 put("triangle", Toggles.CONVEYOR);
             }}
     };
@@ -45,9 +46,9 @@ public class DriveNew extends LinearOpMode {
 
     enum Toggles {
         HOOK_UP,
-	HOOK_DOWN,
+	    HOOK_DOWN,
         SLIDE_UP,
-	SLIDE_DOWN,
+	    SLIDE_DOWN,
         CONVEYOR,
         SHOOTER,
         COLLECTOR,
@@ -150,11 +151,13 @@ public class DriveNew extends LinearOpMode {
 
         Toggler toggler = new Toggler();
         try {
-            for (Map<String, Toggles> map : keyMap) {
-                for (int i1 = 0; i1 < map.size(); i1++) {
-                    String key = (String) map.keySet().toArray()[i1];
+            for (int i = 0; i < 2; i++) {
+                Gamepad gamepad = i == 0 ? gamepad1 : gamepad2;
+                Map<String, Toggles> map = keyMap[i];
+                for (String key : map.keySet()) {
                     Toggles toggle = map.get(key);
-                    if (toggler.check(gamepad1.getClass().getField(key).get(this.getClass().getField("gamepad" + i).get(this)), toggle)) {
+                    Logger.addDataDashboard("Toggle " + toggle, toggles.contains(toggle));
+                    if (toggler.check(gamepad.getClass().getField(key).get(gamepad), toggle)) {
                         toggler.toggle(toggle);
                     }
                 }
@@ -270,12 +273,12 @@ public class DriveNew extends LinearOpMode {
     }
 
     void hook() {
-        if(toggles.contains(Toggles.HOOK_UP)) {
+        if(gamepad2.right_trigger > 0) {
             motors.get("hook").setPower(gamepad2.right_trigger);
         }
-	else if(toggles.contains(Toggles.HOOK_DOWN)) {
-            motors.get("hook").setPower(-gamepad2.left_trigger);
-	}
+        else if(gamepad2.left_trigger > 0) {
+                motors.get("hook").setPower(-gamepad2.left_trigger);
+        }
         else {
             motors.get("hook").setPower(0);
         }
