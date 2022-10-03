@@ -150,7 +150,7 @@ public class DriveNew extends LinearOpMode {
                 for (int i1 = 0; i1 < map.size(); i1++) {
                     String key = (String) map.keySet().toArray()[i1];
                     Toggles toggle = map.get(key);
-                    if (toggler.check(gamepad1.getClass().getField(key).get(gamepad1), toggle)) {
+                    if (toggler.check(gamepad1.getClass().getField(key).get(this.getClass().getField("gamepad" + i).get(this)), toggle)) {
                         toggler.toggle(toggle);
                     }
                 }
