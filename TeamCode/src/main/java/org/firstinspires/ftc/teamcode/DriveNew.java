@@ -29,8 +29,9 @@ public class DriveNew extends LinearOpMode {
             new HashMap<String, Toggles>() {{
                 put("dpad_up", Toggles.SLIDE_UP);
                 put("dpad_down", Toggles.SLIDE_DOWN);
-                put("right_trigger", Toggles.HOOK_UP);
-                put("left_trigger", Toggles.HOOK_DOWN);
+                // put("right_trigger", Toggles.HOOK_UP);
+                // put("left_trigger", Toggles.HOOK_DOWN);
+                put("square", Toggles.FREEZE_HOOK);
                 put("triangle", Toggles.CONVEYOR);
             }}
     };
@@ -45,10 +46,11 @@ public class DriveNew extends LinearOpMode {
     BNO055IMU imu;
 
     enum Toggles {
-        HOOK_UP,
-	    HOOK_DOWN,
+        // HOOK_UP,
+	    // HOOK_DOWN,
         SLIDE_UP,
-	    SLIDE_DOWN,
+        SLIDE_DOWN,
+        FREEZE_HOOK,
         CONVEYOR,
         SHOOTER,
         COLLECTOR,
@@ -56,6 +58,12 @@ public class DriveNew extends LinearOpMode {
 
         public boolean prevState;
     }
+
+    double shooterVelocity = 0;
+    double slideDistance = 0;
+    double hookDistance = 0;
+    double slideRadius = Configurable.slideRadius;
+    double hookRadius = Configurable.hookRadius;
 
     void initMotors() {
         motors.put("leftSide", new Motor(hardwareMap.get(DcMotorImplEx.class, "leftSide")));
@@ -178,50 +186,18 @@ public class DriveNew extends LinearOpMode {
     void shooter() {
         checkShooterValidity();
 
-//        PIDFCoefficients shooterUpPID = Configurable.shooterUpCoeffs;
-//        PIDFCoefficients shooterDownPID = Configurable.shooterDownCoeffs;
-        double velocity = this.calculateShooterVelocity();
-        Logger.addDataDashboard("TARGET VELOCITY (ticks/sec)", velocity);
+        shooterVelocity = this.calculateShooterVelocity();
+        Logger.addDataDashboard("TARGET VELOCITY (ticks/sec)", shooterVelocity);
 
         if(toggles.contains(Toggles.SHOOTER)) {
-            motors.get("shooterUp").setVelocity(velocity);
-            motors.get("shooterDown").setVelocity(velocity);
+            motors.get("shooterUp").setVelocity(shooterVelocity);
+            motors.get("shooterDown").setVelocity(shooterVelocity);
         }
         else {
             motors.get("shooterUp").setPower(0);
             motors.get("shooterDown").setPower(0);
         }
     }
-
-//    double calculateShooterVelocity() {
-//        double shooterGearRatio = Configurable.shooterGearRatio;
-//        double shooterWheelRadiusStart = Configurable.shooterWheelRadiusStart;
-//        double shooterWheelMaxExpansion = Configurable.shooterWheelMaxExpansion;
-//        double shooterMaxVelo = Configurable.shooterMaxVelo;
-//        double verticalDistanceToTarget = sinkCenterLocation.Y - location.Y;
-//        double horizontalDistanceToTarget = tracker.distanceTo(sinkCenterLocation);
-//        Logger.addDataDashboard("horizontalDistanceToTarget", horizontalDistanceToTarget);
-//        Logger.addDataDashboard("veloUp", motors.get("shooterUp").getVelocity());
-////        double shooterAngleToTarget = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).secondAngle + 90; // control hub is 90 degrees off the way it is placed
-//        double shooterAngleToTarget = 69.0;
-//        double shooterAngleToTargetTan = Math.tan(Math.toRadians(shooterAngleToTarget));
-//        // D * targetAngleTan has to be bigger/equal(risky) than verticalDistanceToTarget
-//        minimumDistanceToTarget = verticalDistanceToTarget / shooterAngleToTargetTan;
-//        double sqrdHorizontalDistanceToTarget = Math.pow(horizontalDistanceToTarget, 2);
-//        double sqrdTargetAngleTan = Math.pow(shooterAngleToTargetTan, 2);
-//        Acceleration gravity = imu.getGravity();
-//        double gravityMagnitude = Math.sqrt(Math.pow(gravity.xAccel, 2) + Math.pow(gravity.yAccel, 2) + Math.pow(gravity.zAccel, 2));
-//
-//        Logger.addData("Shooter angle to target: " + shooterAngleToTarget);
-//
-//        double targetVelo = Math.sqrt(gravityMagnitude * sqrdHorizontalDistanceToTarget * (1 + sqrdTargetAngleTan) /
-//                (2 * (horizontalDistanceToTarget * shooterAngleToTargetTan - verticalDistanceToTarget)));
-//        double shooterWheelRadius = shooterWheelRadiusStart + (shooterWheelMaxExpansion * motors.get("shooterUp").getVelocity(AngleUnit.RADIANS) / shooterMaxVelo);
-//        double targetVeloRad = targetVelo / shooterGearRatio / shooterWheelRadius;
-//
-//        Logger.addDataDashboard("targetVelo / shooterGearRatio / shooterWheelRadius: " + targetVelo + "/" , shooterGearRatio + "/" + shooterWheelRadius + "=" + targetVeloRad);
-//        return targetVeloRad;
-//    }
 
     double calculateShooterVelocity() {
         double shooterGearRatio = Configurable.shooterGearRatio;
@@ -261,23 +237,28 @@ public class DriveNew extends LinearOpMode {
     }
 
     void slide() {
-        if(toggles.contains(Toggles.SLIDE_UP)) {
-            motors.get("slide").setPower(1);
+        double slideVelo, hookVelo = Configurable.liftVelo;
+        hookVelo += 0.2;
+        if(toggles.contains(Toggles.SLIDE_UP) && slideDistance < Configurable.slideMaxDistance) {
+            motors.get("slide").setVelocity(slideVelo * slideRadius); // angular velocity
+            motors.get("hook").setVelocity(hookVelo * hookRadius); // angular velocity
+            slideDistance = motors.get("slide").getCurrentPosition() / 28 * 2 * Math.PI * slideRadius;
+            Logger.addDataDashboard("slideDistance", slideDistance);
         }
-	else if(toggles.contains(Toggles.SLIDE_DOWN)) {
-            motors.get("slide").setPower(-1);
-	}
         else {
             motors.get("slide").setPower(0);
         }
     }
 
     void hook() {
-        if(gamepad2.right_trigger > 0) {
+        if(Math.abs(gamepad2.right_trigger) > 0) {
             motors.get("hook").setPower(gamepad2.right_trigger);
         }
-        else if(gamepad2.left_trigger > 0) {
-                motors.get("hook").setPower(-gamepad2.left_trigger);
+        else if(Math.abs(gamepad2.left_trigger) > 0) {
+            motors.get("hook").setPower(-gamepad2.left_trigger);
+        }
+        else if(Toggles.FREEZE_HOOK) {
+            motors.get("hook").setHoldPosition(true);
         }
         else {
             motors.get("hook").setPower(0);
@@ -285,9 +266,9 @@ public class DriveNew extends LinearOpMode {
     }
 
     void conveyor() {
-//        double avgVelo = motors.get("shooterUp").getVelocity() + motors.get("shooterDown").getVelocity() / 2;
-//        if
-        if(toggles.contains(Toggles.CONVEYOR)) {
+        double avgVelo = motors.get("shooterUp").getVelocity() + motors.get("shooterDown").getVelocity() / 2;
+        if ((Math.abs(shooterVelocity - avgVelo) < 40 && toggles.contains(Toggles.CONVEYOR)) 
+        || (avgVelo == 0 && toggles.contains(Toggles.CONVEYOR))) {
             motors.get("conveyor").setPower(-1);
         }
         else {
