@@ -31,7 +31,6 @@ public class DriveNew extends LinearOpMode {
                 put("dpad_down", Toggles.SLIDE_DOWN);
                 // put("right_trigger", Toggles.HOOK_UP);
                 // put("left_trigger", Toggles.HOOK_DOWN);
-                put("square", Toggles.FREEZE_HOOK);
                 put("triangle", Toggles.CONVEYOR);
             }}
     };
@@ -50,7 +49,6 @@ public class DriveNew extends LinearOpMode {
 	    // HOOK_DOWN,
         SLIDE_UP,
         SLIDE_DOWN,
-        FREEZE_HOOK,
         CONVEYOR,
         SHOOTER,
         COLLECTOR,
@@ -74,6 +72,8 @@ public class DriveNew extends LinearOpMode {
         motors.put("collector", new Motor(hardwareMap.get(DcMotorImplEx.class, "collector")));
         motors.put("slide", new Motor(hardwareMap.get(DcMotorImplEx.class, "slide")));
         motors.put("hook", new Motor(hardwareMap.get(DcMotorImplEx.class, "hook")));
+
+        motors.get("hook").setHoldPosition(true);
 
         motors.forEach((name, motor) -> {
             motor.setMode(RunMode.STOP_AND_RESET_ENCODER);
@@ -237,7 +237,8 @@ public class DriveNew extends LinearOpMode {
     }
 
     void slide() {
-        double slideVelo, hookVelo = Configurable.liftVelo;
+        double slideVelo = Configurable.liftVelo;
+        double hookVelo = Configurable.liftVelo;
         hookVelo += 0.2;
         if(toggles.contains(Toggles.SLIDE_UP) && slideDistance < Configurable.slideMaxDistance) {
             motors.get("slide").setVelocity(slideVelo * slideRadius); // angular velocity
@@ -251,14 +252,11 @@ public class DriveNew extends LinearOpMode {
     }
 
     void hook() {
-        if(Math.abs(gamepad2.right_trigger) > 0) {
+        if(Math.abs(gamepad2.right_trigger) > 0.1) {
             motors.get("hook").setPower(gamepad2.right_trigger);
         }
-        else if(Math.abs(gamepad2.left_trigger) > 0) {
+        else if(Math.abs(gamepad2.left_trigger) > 0.1) {
             motors.get("hook").setPower(-gamepad2.left_trigger);
-        }
-        else if(Toggles.FREEZE_HOOK) {
-            motors.get("hook").setHoldPosition(true);
         }
         else {
             motors.get("hook").setPower(0);
@@ -286,6 +284,7 @@ public class DriveNew extends LinearOpMode {
         Logger.addDataDashboard("|--  ShooterDown power: " , motors.get("shooterDown").getPower());
         Logger.addDataDashboard("|--  Slide power: " , motors.get("slide").getPower());
         Logger.addDataDashboard("|--  Hook power: " , motors.get("hook").getPower());
+        Logger.addDataDashboard("|--  Hook ticks: ", motors.get("hook").getCurrentPosition());
         Logger.addDataDashboard("|--  ShooterUp velocity: " , motors.get("shooterUp").getVelocity());
         Logger.addDataDashboard("|--  ShooterDown velocity: " , motors.get("shooterDown").getVelocity());
         Logger.addData("Ticks:");
@@ -313,8 +312,8 @@ public class DriveNew extends LinearOpMode {
 
     void vectorControl() {
         if(gamepad1.dpad_down) {
-            tracker.currentLocation.X = 75;
-            tracker.currentLocation.Z = 350;
+            tracker.currentLocation.X = 200;
+            tracker.currentLocation.Z = 175;
         }
     }
 

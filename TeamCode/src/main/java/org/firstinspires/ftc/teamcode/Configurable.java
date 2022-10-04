@@ -39,7 +39,7 @@ public class Configurable {
     public static Vector sinkCenterLocation = new Vector(300, 250, 350);
 
     // Lifting mechanism
-    public static double liftVeloRad = 3;
+    public static double liftVelo = 3;
     public static double slideRadius = 3;
     public static double hookRadius = 2.5;
     public static double stopperLength = 4;
