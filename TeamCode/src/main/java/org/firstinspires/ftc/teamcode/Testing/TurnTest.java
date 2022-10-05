@@ -8,6 +8,8 @@ import com.z3db0y.davidlib.DriveTrain;
 import com.z3db0y.davidlib.Logger;
 import com.z3db0y.davidlib.Motor;
 
+import org.firstinspires.ftc.teamcode.Configurable;
+
 import java.util.Arrays;
 import java.util.HashMap;
 
@@ -40,8 +42,7 @@ public class TurnTest extends LinearOpMode {
 
         waitForStart();
 
-        driveTrain.turn(1, 45);
-
+        driveTrain.turn(1.0, 45.0, Configurable.wheelRadius, Configurable.motorTicksPerRevolution, Configurable.robotWidth);
         while (opModeIsActive()) {
             leftSide.setPower(gamepad1.left_stick_y - gamepad1.right_stick_x);
             rightSide.setPower(gamepad1.left_stick_y + gamepad1.right_stick_x);

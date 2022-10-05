@@ -15,26 +15,18 @@ public class DriveTrain {
     }
 
     public enum Location {
-        BACKLEFT(0, 1),
-        BACKRIGHT(0, 0),
-        CENTERLEFT(1, 1),
-        CENTERRIGHT(1, 0),
-        FRONTLEFT(2, 1),
-        FRONTRIGHT(2, 0);
+        BACKLEFT,
+        BACKRIGHT,
+        CENTERLEFT,
+        CENTERRIGHT,
+        FRONTLEFT,
+        FRONTRIGHT;
 
-        int pos;
-        int side;
-
-        Location(int pos, int side) {
-            this.pos = pos;
-            this.side = side;
-        }
-
-        public boolean isLeft() { return (this.side == 1); }
-        public boolean isRight() { return (this.side == 0); }
-        public boolean isBack() { return (this.pos == 0); }
-        public boolean isCenter() { return (this.pos == 1); }
-        public boolean isFront() { return (this.pos == 2); }
+        public boolean isLeft() { return (this == BACKLEFT || this == CENTERLEFT || this == FRONTLEFT); }
+        public boolean isRight() { return (this == BACKRIGHT || this == CENTERRIGHT || this == FRONTRIGHT); }
+        public boolean isBack() { return (this == BACKLEFT || this == BACKRIGHT); }
+        public boolean isCenter() { return (this == CENTERLEFT || this == CENTERRIGHT); }
+        public boolean isFront() { return (this == FRONTLEFT || this == FRONTRIGHT); }
     }
 
     public DriveTrain(Type type, Map<Location, Motor> motors) {
@@ -73,10 +65,10 @@ public class DriveTrain {
         return false;
     }
 
-    public void turn(double pow, double target) {
-        double wheelCirc = 2 * Math.PI * 4.5;
-        double cmPer90Deg = 23.9 * Math.PI / 2;
-        double ticksPer90Deg = cmPer90Deg / wheelCirc * 560;
+    public void turn(double pow, double target, double wheelRadius, double ticksPerRev, double robotWidth) {
+        double wheelCirc = 2 * Math.PI * wheelRadius;
+        double cmPer90Deg = robotWidth * Math.PI / 2;
+        double ticksPer90Deg = cmPer90Deg / wheelCirc * ticksPerRev;
         double targetTicks = ticksPer90Deg * target / 90;
         double leftTicks = 0;
         double rightTicks = 0;
@@ -99,6 +91,10 @@ public class DriveTrain {
         }
 
         while(this.isBusy()) {
+            for(Location l : this.motors.keySet()) {
+                Logger.addDataDashboard(l.name() + " current", motors.get(l).getCurrentPosition());
+                Logger.addDataDashboard(l.name() + " target", motors.get(l).getTargetPosition());
+            }
             Logger.addDataDashboard("target", target);
             Logger.addDataDashboard("direction", direction);
             Logger.addDataDashboard("sideTickDelta", sideTickDelta);
