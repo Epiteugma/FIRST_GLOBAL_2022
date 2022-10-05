@@ -278,24 +278,13 @@ public class DriveNew extends LinearOpMode {
 
     void logging() {
         Logger.addData("Powers:");
-        Logger.addDataDashboard("|--  Right Side power: " , motors.get("rightSide").getPower());
-        Logger.addDataDashboard("|--  Left Side power: " , motors.get("leftSide").getPower());
-        Logger.addDataDashboard("|--  Conveyor power: " , motors.get("conveyor").getPower());
-        Logger.addDataDashboard("|--  Collector power: " , motors.get("collector").getPower());
-        Logger.addDataDashboard("|--  ShooterUp power: " , motors.get("shooterUp").getPower());
-        Logger.addDataDashboard("|--  ShooterDown power: " , motors.get("shooterDown").getPower());
-        Logger.addDataDashboard("|--  Slide power: " , motors.get("slide").getPower());
-        Logger.addDataDashboard("|--  Hook power: " , motors.get("hook").getPower());
-        Logger.addDataDashboard("|--  ShooterUp velocity: " , motors.get("shooterUp").getVelocity());
-        Logger.addDataDashboard("|--  ShooterDown velocity: " , motors.get("shooterDown").getVelocity());
-        Logger.addData("Ticks:");
-        Logger.addDataDashboard("|--  RightSide ticks: " , motors.get("rightSide").getCurrentPosition());
-        Logger.addDataDashboard("|--  LeftSide ticks: " , motors.get("leftSide").getCurrentPosition());
-        Logger.addDataDashboard("|--  Conveyor ticks: " , motors.get("conveyor").getCurrentPosition());
-        Logger.addDataDashboard("|--  collector ticks: " , motors.get("collector").getCurrentPosition());
-        Logger.addDataDashboard("|--  ShooterUp ticks: " , motors.get("shooterUp").getCurrentPosition());
-        Logger.addDataDashboard("|--  ShooterDown ticks: " , motors.get("shooterDown").getCurrentPosition());
-        Logger.addData("Info (usually variables):");
+        motors.forEach((name, motor) -> {
+            Logger.addData(name + ": ")
+            Logger.addDataDashboard("|--  power: ", motor.getPower());
+            Logger.addDataDashboard("|--  ticks: ", motor.getCurrentPosition());
+            Logger.addDataDashboard("|--  velocity: ", motor.getVelocity());
+        });
+//        Logger.addData("Info (usually variables):");
 //        Logger.addDataDashboard("|--  shooter step: " , shooterStep);
 //        Logger.addDataDashboard("|--  prevTime: " , prevTime);
         Logger.addData("Position:");
@@ -323,8 +312,8 @@ public class DriveNew extends LinearOpMode {
         initSelf();
         waitForStart();
         while (opModeIsActive()) {
-            track();
             vectorControl();
+            track();
 
             drive(gamepad1.left_stick_y, gamepad1.right_stick_x);
             shooter();
