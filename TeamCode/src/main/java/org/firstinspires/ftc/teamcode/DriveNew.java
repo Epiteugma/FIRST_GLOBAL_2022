@@ -83,8 +83,8 @@ public class DriveNew extends LinearOpMode {
 //        motors.get("shooterDown").setDirection(DcMotorSimple.Direction.REVERSE);
         motors.get("shooterUp").setDirection(DcMotorSimple.Direction.REVERSE);
 
-        motors.get("hook").setHoldPosition(true);
-        motors.get("slide").setHoldPosition(true);
+//        motors.get("hook").setHoldPosition(true);
+//        motors.get("slide").setHoldPosition(true);
 
         Map<DriveTrain.Location, Motor> driveTrainMotors = new HashMap<>();
         driveTrainMotors.put(DriveTrain.Location.BACKLEFT, motors.get("leftSide"));
@@ -249,35 +249,35 @@ public class DriveNew extends LinearOpMode {
     }
 
     void slide() {
+        double slideMaxDistance = Configurable.slideMaxDistance;
+        double hookMaxDistance = Configurable.hookMaxDistance;
         Logger.addDataDashboard("slideDistance", slideDistance);
         if(toggles.contains(Toggles.SLIDE_UP) && slideDistance < Configurable.slideMaxDistance) {
-            motors.get("slide").setTargetPosition((int) Configurable.slideMaxDistance);
+//            toggles.remove(Toggles.SLIDE_UP);
+            motors.get("slide").setTargetPosition(Configurable.slideMaxDistance);
             motors.get("slide").setPower(1);
             motors.get("slide").setMode(RunMode.RUN_TO_POSITION);
             motors.get("hook").setPower(0.65);
+            motors.get("hook").setTargetPosition(Configurable.hookMaxDistance);
+            motors.get("hook").setMode(RunMode.RUN_TO_POSITION);
             slideDistance = motors.get("slide").getCurrentPosition() / 28.0 * 2 * Math.PI * slideRadius;
         }
         else if(toggles.contains(Toggles.SLIDE_DOWN)){
             motors.get("slide").setTargetPosition(0);
+            motors.get("slide").setPower(0.35);
             motors.get("slide").setMode(RunMode.RUN_TO_POSITION);
-        }
-        else {
-            motors.get("slide").setPower(0);
         }
     }
 
     void hook() {
         if(Math.abs(gamepad2.right_trigger) > 0.2) {
-            motors.get("hook").setHoldPosition(false);
             motors.get("hook").setPower(gamepad2.right_trigger);
         }
         else if(Math.abs(gamepad2.left_trigger) > 0.2) {
-            motors.get("hook").setHoldPosition(false);
             motors.get("hook").setPower(-gamepad2.left_trigger);
         }
         else {
             motors.get("hook").setPower(0);
-            motors.get("hook").setHoldPosition(true);
         }
     }
 
