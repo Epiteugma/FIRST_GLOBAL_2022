@@ -43,9 +43,7 @@ public class TurnTest extends LinearOpMode {
         waitForStart();
 
         driveTrain.turn(1.0, 45.0, Configurable.wheelRadius, Configurable.motorTicksPerRevolution, Configurable.robotWidth);
-        while (opModeIsActive()) {
-            leftSide.setPower(gamepad1.left_stick_y - gamepad1.right_stick_x);
-            rightSide.setPower(gamepad1.left_stick_y + gamepad1.right_stick_x);
-        }
+        leftSide.setPower(0);
+        rightSide.setPower(0);
     }
 }

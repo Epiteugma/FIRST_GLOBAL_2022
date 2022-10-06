@@ -27,6 +27,7 @@ public class DriveNew extends LinearOpMode {
             }},
             // Gamepad 2
             new HashMap<String, Toggles>() {{
+                put("square", Toggles.FREEZE_HOOK);
                 put("dpad_up", Toggles.SLIDE_UP);
                 put("dpad_down", Toggles.SLIDE_DOWN);
                 // put("right_trigger", Toggles.HOOK_UP);
@@ -48,6 +49,7 @@ public class DriveNew extends LinearOpMode {
     enum Toggles {
         // HOOK_UP,
 	    // HOOK_DOWN,
+        FREEZE_HOOK,
         FACE_TARGET,
         SLIDE_UP,
         SLIDE_DOWN,
@@ -79,6 +81,9 @@ public class DriveNew extends LinearOpMode {
             motor.setMode(RunMode.STOP_AND_RESET_ENCODER);
             motor.setMode(RunMode.RUN_USING_ENCODER);
         });
+
+        motors.get("rightSide").setDirection(DcMotorSimple.Direction.REVERSE);
+        motors.get("leftSide").setDirection(DcMotorSimple.Direction.REVERSE);
 
 //        motors.get("shooterDown").setDirection(DcMotorSimple.Direction.REVERSE);
         motors.get("shooterUp").setDirection(DcMotorSimple.Direction.REVERSE);
@@ -132,7 +137,7 @@ public class DriveNew extends LinearOpMode {
     }
 
     void drive(double left_stick_y, double right_stick_x) {
-        driveTrain.driveRobotCentric(-left_stick_y, right_stick_x, 0);
+        driveTrain.driveRobotCentric(left_stick_y, right_stick_x, 0);
     }
 
     void toggles() {
@@ -249,16 +254,15 @@ public class DriveNew extends LinearOpMode {
     }
 
     void slide() {
-        double slideMaxDistance = Configurable.slideMaxDistance;
-        double hookMaxDistance = Configurable.hookMaxDistance;
+        int slideMaxDistance = Configurable.slideMaxDistance;
+        int hookMaxDistance = Configurable.hookMaxDistance;
         Logger.addDataDashboard("slideDistance", slideDistance);
-        if(toggles.contains(Toggles.SLIDE_UP) && slideDistance < Configurable.slideMaxDistance) {
-//            toggles.remove(Toggles.SLIDE_UP);
-            motors.get("slide").setTargetPosition(Configurable.slideMaxDistance);
+        if(toggles.contains(Toggles.SLIDE_UP) && slideDistance < slideMaxDistance) {
+            motors.get("slide").setTargetPosition(slideMaxDistance);
             motors.get("slide").setPower(1);
             motors.get("slide").setMode(RunMode.RUN_TO_POSITION);
-            motors.get("hook").setPower(0.65);
-            motors.get("hook").setTargetPosition(Configurable.hookMaxDistance);
+            motors.get("hook").setPower(0.725);
+            motors.get("hook").setTargetPosition(hookMaxDistance);
             motors.get("hook").setMode(RunMode.RUN_TO_POSITION);
             slideDistance = motors.get("slide").getCurrentPosition() / 28.0 * 2 * Math.PI * slideRadius;
         }
@@ -271,12 +275,19 @@ public class DriveNew extends LinearOpMode {
 
     void hook() {
         if(Math.abs(gamepad2.right_trigger) > 0.2) {
-            motors.get("hook").setPower(gamepad2.right_trigger);
+            motors.get("hook").setMode(RunMode.RUN_USING_ENCODER);
+            motors.get("hook").setPower(-gamepad2.right_trigger * 0.6);
         }
         else if(Math.abs(gamepad2.left_trigger) > 0.2) {
-            motors.get("hook").setPower(-gamepad2.left_trigger);
+            motors.get("hook").setMode(RunMode.RUN_USING_ENCODER);
+            motors.get("hook").setPower(gamepad2.left_trigger * 0.6);
         }
-        else {
+        else if(toggles.contains(Toggles.FREEZE_HOOK)){
+            toggles.remove(Toggles.FREEZE_HOOK);
+            motors.get("hook").setPower(0);
+            motors.get("hook").setHoldPosition(true);
+        }
+        else if(motors.get("hook").atTargetPosition()){
             motors.get("hook").setPower(0);
         }
     }
@@ -329,7 +340,7 @@ public class DriveNew extends LinearOpMode {
             vectorControl();
             track();
 
-            drive(gamepad1.left_stick_y * Configurable.globalPowerFactor, gamepad1.right_stick_x * Configurable.globalPowerFactor);
+            drive(gamepad1.left_stick_y * Configurable.globalPowerFactor, gamepad1.right_stick_x * (Configurable.globalPowerFactor - 0.15));
             shooter();
             collector();
             hook();

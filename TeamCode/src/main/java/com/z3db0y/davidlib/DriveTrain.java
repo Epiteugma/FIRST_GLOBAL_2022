@@ -80,12 +80,12 @@ public class DriveTrain {
         }
         double sideTickDelta = leftTicks - rightTicks;
         double rotation = sideTickDelta / ticksPer90Deg * 90;
-        int direction = Math.abs(target - rotation) > 180 ? 1 : -1;
+        int direction = Math.abs(target - rotation) > 180 ? -1 : 1;
 
         for(DriveTrain.Location location : this.motors.keySet()) {
             Motor motor = this.motors.get(location);
             if(location.isLeft()) motor.setTargetPosition(motor.getCurrentPosition() - (int) (targetTicks * direction));
-            else motor.setTargetPosition(motor.getCurrentPosition() + (int) (targetTicks * direction));
+            else motor.setTargetPosition(motor.getCurrentPosition() - (int) (targetTicks * direction));
             motor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
             motor.setPower(pow);
         }
@@ -108,8 +108,8 @@ public class DriveTrain {
 
         for(DriveTrain.Location location : this.motors.keySet()) {
             Motor motor = this.motors.get(location);
-            motor.setPower(0);
             motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            motor.setPower(0);
         }
     }
 

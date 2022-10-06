@@ -38,6 +38,10 @@ public class Motor extends DcMotorImplEx {
         holdPosition();
     }
 
+    public boolean atTargetPosition(){
+        return this.getCurrentPosition() == this.getTargetPosition();
+    }
+
     public RunMode getMode() {
         return this.runMode;
     }

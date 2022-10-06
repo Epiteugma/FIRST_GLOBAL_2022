@@ -44,8 +44,8 @@ public class Configurable {
     public static double stopperLength = 2;
     public static int numOfBars = 5;
     public static double barLength = 40;
-    public static int slideMaxDistance = 1400;
-    public static int hookMaxDistance = 1380;
+    public static int slideMaxDistance = 1450;
+    public static int hookMaxDistance = 7800;
 
     public static double globalPowerFactor = 0.65;
 }
