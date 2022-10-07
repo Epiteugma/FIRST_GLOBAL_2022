@@ -26,7 +26,7 @@ public class Configurable {
 
     public static double SHOOTING_CIRCLE_RADIUS = 320;
 
-    public static double paragondas = 2;
+    public static double paragondas = 1.8;
     public static double shooterWheelRadiusStart = 2.5;
     public static double shooterWheelMaxExpansion = 2;
     public static double shooterGearRatio = 90.0 / 30.0;
@@ -47,5 +47,6 @@ public class Configurable {
     public static int slideMaxDistance = 1450;
     public static int hookMaxDistance = 7800;
 
-    public static double globalPowerFactor = 0.65;
+    public static double forwardPowerFactor = 0.5;
+    public static double turnPowerFactor = 0.3;
 }

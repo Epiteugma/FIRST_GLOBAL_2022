@@ -88,8 +88,8 @@ public class LocationTracker {
         double xMultiplier = 1 - rotation180/90;
         double zMultiplier = 1 - rotation180Shifted/90;
 
-        this.currentLocation.X += tickAverage / ticksPerCM * xMultiplier;
-        this.currentLocation.Z += tickAverage / ticksPerCM * zMultiplier;
+        this.currentLocation.X -= tickAverage / ticksPerCM * xMultiplier;
+        this.currentLocation.Z -= tickAverage / ticksPerCM * zMultiplier;
 
         if(this.telemetry != null) {
             this.telemetry.addData("X", this.currentLocation.X);
