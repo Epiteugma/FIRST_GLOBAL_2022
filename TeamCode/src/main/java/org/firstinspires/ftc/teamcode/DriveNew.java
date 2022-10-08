@@ -115,6 +115,7 @@ public class DriveNew extends LinearOpMode {
 
         motors.get("rightSide").setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         motors.get("leftSide").setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        motors.get("hook").setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         Map<DriveTrain.Location, Motor> driveTrainMotors = new HashMap<>();
         driveTrainMotors.put(DriveTrain.Location.BACKLEFT, motors.get("leftSide"));
@@ -124,7 +125,7 @@ public class DriveNew extends LinearOpMode {
 
     void initLocator() {
         tracker = new LocationTracker();
-        tracker.currentLocation.X = Configurable.robotDepth / 2;
+        tracker.currentLocation.X = Configurable.robotDepth / 2 + Configurable.compressorLength; // add compressor
         tracker.currentLocation.Y = Configurable.robotHeight / 2 + Configurable.centerToShooter;
         tracker.currentLocation.Z = Configurable.robotWidth / 2;
 
@@ -176,7 +177,7 @@ public class DriveNew extends LinearOpMode {
 
             public boolean check(Object cond, Toggles toggle) {
                 boolean pass = false;
-                if(cond instanceof Number) pass = ((Number) cond).doubleValue() > 0.2;
+                if(cond instanceof Number) pass = ((Number) cond).doubleValue() > 0.15;
                 else if(cond instanceof Boolean) pass = (boolean) cond;
 
                 boolean valid = pass && !toggle.prevState;
@@ -213,6 +214,7 @@ public class DriveNew extends LinearOpMode {
         if(toggles.contains(Toggles.SHOOTER)) {
             if(!tracker.checkInsideCircle(sinkCenterLocation, SHOOTING_CIRCLE_RADIUS)) {
                 Logger.addDataDashboard("insideShootingCircle", "false");
+                gamepad1.rumble(1000);
                 toggles.remove(Toggles.SHOOTER);
             }
             else {
@@ -226,6 +228,15 @@ public class DriveNew extends LinearOpMode {
 
         checkShooterValidity();
 
+        if(toggles.contains(Toggles.INCREASE_SHOOTER)){
+            toggles.remove(Toggles.INCREASE_SHOOTER);
+            tracker.currentLocation.X -= 5;
+        }
+        else if(toggles.contains(Toggles.DECREASE_SHOOTER)){
+            toggles.remove(Toggles.DECREASE_SHOOTER);
+            tracker.currentLocation.X += 5;
+        }
+
         shooterVelocity = this.calculateShooterVelocity();
         Logger.addDataDashboard("TARGET VELOCITY (ticks/sec)", shooterVelocity);
         if(toggles.contains(Toggles.EATING) || toggles.contains(Toggles.EMPTY)) {
@@ -235,14 +246,6 @@ public class DriveNew extends LinearOpMode {
         else if(toggles.contains(Toggles.SHOOTER)) {
             motors.get("shooterUp").setVelocity(shooterVelocity);
             motors.get("shooterDown").setVelocity(shooterVelocity);
-        }
-        else if(toggles.contains(Toggles.INCREASE_SHOOTER)){
-            toggles.remove(Toggles.INCREASE_SHOOTER);
-            tracker.currentLocation.X -= 5;
-        }
-        else if(toggles.contains(Toggles.DECREASE_SHOOTER)){
-            toggles.remove(Toggles.DECREASE_SHOOTER);
-            tracker.currentLocation.X += 5;
         }
         else {
             motors.get("shooterUp").setPower(0);
@@ -258,7 +261,7 @@ public class DriveNew extends LinearOpMode {
 
         double shooterWheelRadius = shooterWheelRadiusStart + (shooterWheelMaxExpansion * Math.abs(motors.get("shooterUp").getVelocity()) / shooterMaxVelo);
 
-        double verticalDistanceToTarget = (sinkCenterLocation.Y - tracker.currentLocation.Y + 30) / 100; //maybe add 60/2??? and not Configurable.ballDiameter
+        double verticalDistanceToTarget = (sinkCenterLocation.Y - tracker.currentLocation.Y + Configurable.ballDiameter) / 100; //maybe add 60/2??? and not Configurable.ballDiameter
         double horizontalDistanceToTarget = (tracker.distanceTo(sinkCenterLocation) - 60) / 100;
 
         double angleToTarget = Configurable.shooterAngle;
@@ -282,7 +285,7 @@ public class DriveNew extends LinearOpMode {
         if (toggles.contains(Toggles.EMPTY)){
             motors.get("collector").setPower(-1);
         }
-        else if(toggles.contains(Toggles.COLLECTOR)) {
+        else if(toggles.contains(Toggles.COLLECTOR) || toggles.contains(Toggles.EATING)) {
             motors.get("collector").setPower(1);
         }
         else {
@@ -305,20 +308,11 @@ public class DriveNew extends LinearOpMode {
         double slideCirc = 2 * Math.PI * slideRadius;
         Logger.addDataDashboard("slideDistance", slideDistance);
         if(toggles.contains(Toggles.FREEZE_SLIDE)){
+            motors.get("slide").setMode(RunMode.RUN_USING_ENCODER);
             toggles.remove(Toggles.SLIDE_UP);
             toggles.remove(Toggles.SLIDE_DOWN);
             toggles.remove(Toggles.FREEZE_SLIDE);
-            motors.get("slider").setHoldPosition(true);
-        }
-        if(toggles.contains(Toggles.SLIDE_UP) && slideDistance < slideMaxDistance) {
-            toggles.remove(Toggles.SLIDE_DOWN);
-            motors.get("slide").setTargetPosition(slideMaxDistance);
-            motors.get("slide").setPower(1);
-            motors.get("slide").setMode(RunMode.RUN_TO_POSITION);
-//            motors.get("hook").setPower(0.525);
-//            motors.get("hook").setTargetPosition(hookMaxDistance);
-//            motors.get("hook").setMode(RunMode.RUN_TO_POSITION);
-            slideDistance = motors.get("slide").getCurrentPosition() / (28.0 * slideCirc);
+            motors.get("slide").setHoldPosition(true);
         }
         if(toggles.contains(Toggles.SLIDE_DOWN)){
             toggles.remove(Toggles.SLIDE_UP);
@@ -326,18 +320,25 @@ public class DriveNew extends LinearOpMode {
             motors.get("slide").setPower(0.35);
             motors.get("slide").setMode(RunMode.RUN_TO_POSITION);
         }
+        if(toggles.contains(Toggles.SLIDE_UP) && slideDistance < slideMaxDistance) {
+            toggles.remove(Toggles.SLIDE_DOWN);
+            motors.get("slide").setTargetPosition(slideMaxDistance);
+            motors.get("slide").setPower(1);
+            motors.get("slide").setMode(RunMode.RUN_TO_POSITION);
+            slideDistance = motors.get("slide").getCurrentPosition() / (28.0 * slideCirc);
+        }
     }
 
     void hook() {
         if(Math.abs(gamepad2.right_trigger) > 0.1){
             toggles.remove(Toggles.HOOK_DOWN);
             motors.get("hook").setMode(RunMode.RUN_USING_ENCODER);
-            motors.get("hook").setPower(gamepad2.right_trigger * 0.5);
+            motors.get("hook").setPower(gamepad2.right_trigger * 0.75);
         }
         else if(Math.abs(gamepad2.left_trigger) > 0.1){
             toggles.remove(Toggles.HOOK_UP);
             motors.get("hook").setMode(RunMode.RUN_USING_ENCODER);
-            motors.get("hook").setPower(-gamepad2.left_trigger * 0.5);
+            motors.get("hook").setPower(-gamepad2.left_trigger * 0.75);
         }
         else if(toggles.contains(Toggles.FREEZE_HOOK)){
             toggles.remove(Toggles.FREEZE_HOOK);
@@ -346,13 +347,19 @@ public class DriveNew extends LinearOpMode {
             motors.get("hook").setPower(0);
             motors.get("hook").setHoldPosition(true);
         }
-        else if(motors.get("hook").atTargetPosition()){
+        else if(motors.get("hook").getMode() != RunMode.RUN_TO_POSITION){
             motors.get("hook").setPower(0);
         }
     }
 
     void conveyor() {
         double avgVelo = motors.get("shooterUp").getVelocity() + motors.get("shooterDown").getVelocity() / 2;
+        if(toggles.contains(Toggles.EMPTY)){
+            toggles.remove(Toggles.EATING);
+        }
+        if(toggles.contains(Toggles.EATING)){
+            toggles.remove(Toggles.EMPTY);
+        }
         if(toggles.contains(Toggles.EATING) || toggles.contains(Toggles.EMPTY)) {
             motors.get("conveyor").setPower(-1);
         }
@@ -390,21 +397,21 @@ public class DriveNew extends LinearOpMode {
     void vectorControl() {
         if(toggles.contains(Toggles.CENTER_SHOT)){
             toggles.remove(Toggles.CENTER_SHOT);
-            tracker.currentLocation.X = 0;
+            tracker.currentLocation.X = Configurable.robotDepth / 2;
             tracker.currentLocation.Y = Configurable.robotHeight / 2 + Configurable.centerToShooter;
-            tracker.currentLocation.Z = 300;
+            tracker.currentLocation.Z = 350;
         }
         if(toggles.contains(Toggles.RESET_LEFT)){
             toggles.remove(Toggles.RESET_LEFT);
-            tracker.currentLocation.X = Configurable.robotDepth / 2;
+            tracker.currentLocation.X = Configurable.robotDepth / 2 + Configurable.compressorLength; // add compressor
             tracker.currentLocation.Y = Configurable.robotHeight / 2 + Configurable.centerToShooter;
-            tracker.currentLocation.Z = 600;
+            tracker.currentLocation.Z = Configurable.robotWidth / 2;
         }
         if(toggles.contains(Toggles.RESET_RIGHT)){
             toggles.remove(Toggles.RESET_RIGHT);
             tracker.currentLocation.X = Configurable.robotDepth / 2;
             tracker.currentLocation.Y = Configurable.robotHeight / 2 + Configurable.centerToShooter;
-            tracker.currentLocation.Z = Configurable.robotWidth / 2;
+            tracker.currentLocation.Z = 700 - Configurable.compressorLength; // subtract compressor
         }
     }
 

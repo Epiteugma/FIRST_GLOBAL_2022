@@ -36,6 +36,7 @@ public class Configurable {
     public static double ballDiameter = 9;
 
     public static Vector sinkCenterLocation = new Vector(300, 250, 350);
+    public static double compressorLength = 37.5;
 
     // Lifting mechanism
     public static double liftVelo = 600;
@@ -44,8 +45,8 @@ public class Configurable {
     public static double stopperLength = 2;
     public static int numOfBars = 5;
     public static double barLength = 40;
-    public static int slideMaxDistance = 1450;
-    public static int hookMaxDistance = 7800;
+    public static int slideMaxDistance = 1550;
+    public static int hookMaxDistance = -5900;
 
     public static double forwardPowerFactor = 0.5;
     public static double turnPowerFactor = 0.3;

@@ -5,6 +5,7 @@ import com.qualcomm.robotcore.hardware.DcMotorImplEx;
 public class Motor extends DcMotorImplEx {
     boolean hold = false;
     double power = 0;
+    double lastPowerUpdate;
     RunMode runMode = RunMode.RUN_WITHOUT_ENCODER;
 
     public Motor(DcMotorImplEx motor) {
@@ -26,6 +27,7 @@ public class Motor extends DcMotorImplEx {
     }
 
     public void setPower(double power) {
+        this.lastPowerUpdate = System.currentTimeMillis();
         this.power = power;
         super.setMode(this.runMode);
         super.setPower(power);
@@ -48,5 +50,9 @@ public class Motor extends DcMotorImplEx {
 
     public double getPower() {
         return power;
+    }
+
+    public boolean isStalled() {
+        return (super.getVelocity() < (super.getMotorType().getAchieveableMaxTicksPerSecond() * super.getPower() * 0.5)) && power != 0 && this.lastPowerUpdate + 250 < System.currentTimeMillis();
     }
 }
