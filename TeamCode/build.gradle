@@ -23,5 +23,5 @@ dependencies {
 
     implementation 'org.openftc:easyopencv:1.5.1' // Easy OpenCV
 
-    implementation 'com.acmerobotics.dashboard:dashboard:0.4.3' // FTC Dashboad
+    implementation 'com.acmerobotics.dashboard:dashboard:0.4.6' // FTC Dashboad
 }

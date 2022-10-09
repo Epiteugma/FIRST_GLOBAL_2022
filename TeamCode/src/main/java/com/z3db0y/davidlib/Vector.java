@@ -35,11 +35,7 @@ public class Vector {
         return Arrays.asList(toX, toY);
     }
 
-    public List<Double> distanceTo(Vector dst) {
-        Vector src = this;
-        double distanceX = dst.X - src.X;
-        double distanceY = dst.Y - src.Y;
-        double distanceZ = dst.Z - src.Z;
-        return Arrays.asList(distanceX, distanceY, distanceZ);
+    public double distanceTo(Vector dst) {
+        return Math.sqrt(Math.pow(dst.X - this.X, 2) + Math.pow(dst.Z - this.Z, 2));
     }
 }
