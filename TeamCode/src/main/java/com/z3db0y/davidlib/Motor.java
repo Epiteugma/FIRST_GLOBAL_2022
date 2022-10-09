@@ -18,6 +18,9 @@ public class Motor extends DcMotorImplEx {
             this.setTargetPosition(this.getCurrentPosition());
             super.setMode(RunMode.RUN_TO_POSITION);
             super.setPower(1);
+        } else {
+            super.setMode(this.runMode);
+            super.setPower(power);
         }
     }
 
@@ -29,8 +32,6 @@ public class Motor extends DcMotorImplEx {
     public void setPower(double power) {
         this.lastPowerUpdate = System.currentTimeMillis();
         this.power = power;
-        super.setMode(this.runMode);
-        super.setPower(power);
         holdPosition();
     }
 

@@ -48,6 +48,6 @@ public class Configurable {
     public static int slideMaxDistance = 1550;
     public static int hookMaxDistance = -5900;
 
-    public static double forwardPowerFactor = 0.6;
-    public static double turnPowerFactor = 0.35;
+    public static double forwardPowerFactor = 0.5;
+    public static double turnPowerFactor = 0.65;
 }

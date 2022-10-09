@@ -10,6 +10,7 @@ import com.qualcomm.robotcore.hardware.DcMotorImplEx;
 import com.qualcomm.robotcore.hardware.DcMotor.RunMode;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Gamepad;
+import com.qualcomm.robotcore.util.Range;
 import com.z3db0y.davidlib.DriveTrain;
 import com.z3db0y.davidlib.LocationTracker;
 import com.z3db0y.davidlib.Logger;
@@ -20,6 +21,33 @@ import java.util.*;
 
 @TeleOp(name = "FGC22", group = "FGC22")
 public class DriveNew extends LinearOpMode {
+
+    class Toggler {
+
+        public void toggle(Toggles toggle) {
+            if(toggles.contains(toggle)) toggles.remove(toggle);
+            else toggles.add(toggle);
+        }
+
+        public boolean check(Object cond, Toggles toggle) {
+            boolean pass = false;
+            if(cond instanceof Number) pass = ((Number) cond).doubleValue() > 0.15;
+            else if(cond instanceof Boolean) pass = (boolean) cond;
+
+            boolean valid = pass && !toggle.prevState;
+
+            if(valid) {
+                toggle.prevState = true;
+            }
+            else if(!pass) {
+                toggle.prevState = false;
+            }
+
+            return valid;
+        }
+    }
+    Toggler toggler = new Toggler();
+
     Map<String, Toggles>[] keyMap = new Map[]{
             // Gamepad 1
             new HashMap<String, Toggles>() {{
@@ -102,7 +130,7 @@ public class DriveNew extends LinearOpMode {
 //        motors.get("rightSide").setHoldPosition(true);
 //        motors.get("leftSide").setHoldPosition(true);
 //        motors.get("hook").setHoldPosition(true);
-//        motors.get("slide").setHoldPosition(true);
+        motors.get("slide").setHoldPosition(true);
 
 
         motors.get("rightSide").setDirection(DcMotorSimple.Direction.REVERSE);
@@ -113,9 +141,7 @@ public class DriveNew extends LinearOpMode {
         motors.get("collector").setDirection(DcMotorSimple.Direction.REVERSE);
         motors.get("conveyor").setDirection(DcMotorSimple.Direction.REVERSE);
 
-        motors.get("rightSide").setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        motors.get("leftSide").setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        motors.get("hook").setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+        motors.get("hook").setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         Map<DriveTrain.Location, Motor> driveTrainMotors = new HashMap<>();
         driveTrainMotors.put(DriveTrain.Location.BACKLEFT, motors.get("leftSide"));
@@ -160,6 +186,11 @@ public class DriveNew extends LinearOpMode {
 
     void track() {
         currentAngle = imu.getAngularOrientation().firstAngle;
+        double averageVelo = (motors.get("leftSide").getMotorType().getAchieveableMaxTicksPerSecond() * motors.get("leftSide").getPower()) +
+                (motors.get("rightSide").getMotorType().getAchieveableMaxTicksPerSecond() * motors.get("rightSide").getPower()) / 2;
+        double xVelo = -imu.getAngularVelocity().xRotationRate/(2 * Math.PI) * Configurable.motorTicksPerRevolution;
+        Logger.addDataDashboard("xVelo", xVelo);
+        Logger.addDataDashboard("averageVelo", averageVelo);
         tracker.updatePosition(currentAngle);
     }
 
@@ -168,39 +199,12 @@ public class DriveNew extends LinearOpMode {
     }
 
     void toggles() {
-        class Toggler {
-
-            public void toggle(Toggles toggle) {
-                if(toggles.contains(toggle)) toggles.remove(toggle);
-                else toggles.add(toggle);
-            }
-
-            public boolean check(Object cond, Toggles toggle) {
-                boolean pass = false;
-                if(cond instanceof Number) pass = ((Number) cond).doubleValue() > 0.15;
-                else if(cond instanceof Boolean) pass = (boolean) cond;
-
-                boolean valid = pass && !toggle.prevState;
-
-                if(valid) {
-                    toggle.prevState = true;
-                }
-                else if(!pass) {
-                    toggle.prevState = false;
-                }
-
-                return valid;
-            }
-        }
-
-        Toggler toggler = new Toggler();
         try {
             for (int i = 0; i < 2; i++) {
                 Gamepad gamepad = i == 0 ? gamepad1 : gamepad2;
                 Map<String, Toggles> map = keyMap[i];
                 for (String key : map.keySet()) {
                     Toggles toggle = map.get(key);
-                    Logger.addDataDashboard("Toggle " + toggle, toggles.contains(toggle));
                     if (toggler.check(gamepad.getClass().getField(key).get(gamepad), toggle)) {
                         toggler.toggle(toggle);
                     }
@@ -231,12 +235,12 @@ public class DriveNew extends LinearOpMode {
         if(toggles.contains(Toggles.INCREASE_SHOOTER)){
             toggles.remove(Toggles.INCREASE_SHOOTER);
             tracker.currentLocation.X -= 5;
-            telemetry.speak("Minus 5");
+            telemetry.speak("Increased velocity");
         }
         else if(toggles.contains(Toggles.DECREASE_SHOOTER)){
             toggles.remove(Toggles.DECREASE_SHOOTER);
             tracker.currentLocation.X += 5;
-            telemetry.speak("Plus 5");
+            telemetry.speak("Decreased Velocity");
         }
 
         Logger.addDataDashboard("TARGET VELOCITY (ticks/sec)", shooterVelocity);
@@ -315,25 +319,29 @@ public class DriveNew extends LinearOpMode {
         int hookMaxDistance = Configurable.hookMaxDistance;
         double slideCirc = 2 * Math.PI * slideRadius;
         Logger.addDataDashboard("slideDistance", slideDistance);
-        if(toggles.contains(Toggles.FREEZE_SLIDE)){
-            motors.get("slide").setMode(RunMode.RUN_USING_ENCODER);
-            toggles.remove(Toggles.SLIDE_UP);
-            toggles.remove(Toggles.SLIDE_DOWN);
-            toggles.remove(Toggles.FREEZE_SLIDE);
-            motors.get("slide").setHoldPosition(true);
-        }
-        if(toggles.contains(Toggles.SLIDE_DOWN)){
-            toggles.remove(Toggles.SLIDE_UP);
-            motors.get("slide").setPower(-0.75);
-        }
-        else if(toggles.contains(Toggles.SLIDE_UP) && slideDistance < slideMaxDistance) {
-            toggles.remove(Toggles.SLIDE_DOWN);
-            motors.get("slide").setPower(0.35);
-            slideDistance = motors.get("slide").getCurrentPosition() / (28.0 * slideCirc);
-        }
-        else{
-            motors.get("slide").setPower(0);
-        }
+//        if(toggles.contains(Toggles.FREEZE_SLIDE)){
+//            motors.get("slide").setMode(RunMode.RUN_USING_ENCODER);
+//            toggles.remove(Toggles.SLIDE_UP);
+//            toggles.remove(Toggles.SLIDE_DOWN);
+//            toggles.remove(Toggles.FREEZE_SLIDE);
+//            motors.get("slide").setHoldPosition(true);
+//        }
+//        if(toggles.contains(Toggles.SLIDE_DOWN)){
+//            toggles.remove(Toggles.SLIDE_UP);
+//            toggles.remove(Toggles.SLIDE_DOWN);
+//            motors.get("slide").setPower(-0.75);
+//        }
+//        else if(toggles.contains(Toggles.SLIDE_UP)) {
+//            toggles.remove(Toggles.SLIDE_DOWN);
+//            toggles.remove(Toggles.SLIDE_UP);
+//            motors.get("slide").setPower(0.35);
+//        }
+//        else{
+//            motors.get("slide").setPower(0);
+//        }
+        if(gamepad2.dpad_up) motors.get("slide").setPower(1);
+        else if(gamepad2.dpad_down) motors.get("slide").setPower(-1);
+        else motors.get("slide").setPower(0);
     }
 
     void hook() {
@@ -367,11 +375,9 @@ public class DriveNew extends LinearOpMode {
         if(toggles.contains(Toggles.EATING)){
             toggles.remove(Toggles.EMPTY);
         }
-        if (toggles.contains(Toggles.CONVEYOR) && !(toggles.contains(Toggles.EATING) || toggles.contains(Toggles.EMPTY))) {
-            motors.get("conveyor").setPower(1);
-        }
-        else if(toggles.contains(Toggles.EATING) || toggles.contains(Toggles.EMPTY)) {
-            motors.get("conveyor").setPower(-1);
+        if (toggles.contains(Toggles.CONVEYOR)) {
+            if(toggles.contains(Toggles.EATING) || toggles.contains(Toggles.EMPTY)) motors.get("conveyor").setPower(-1);
+            else motors.get("conveyor").setPower(1);
         }
         else {
             motors.get("conveyor").setPower(0);
@@ -410,16 +416,17 @@ public class DriveNew extends LinearOpMode {
         }
         if(toggles.contains(Toggles.RESET_LEFT)){
             toggles.remove(Toggles.RESET_LEFT);
-            tracker.currentLocation.X = Configurable.robotDepth / 2 + Configurable.compressorLength; // add compressor
+//            imu.resetHeading();
+            tracker.currentLocation.X = Configurable.robotDepth / 2;
             tracker.currentLocation.Y = Configurable.robotHeight / 2 + Configurable.centerToShooter;
-            tracker.currentLocation.Z = Configurable.robotWidth / 2;
+            tracker.currentLocation.Z = Configurable.robotWidth / 2 + Configurable.compressorLength; // add compressor
             telemetry.speak("Reset Left");
         }
         if(toggles.contains(Toggles.RESET_RIGHT)){
             toggles.remove(Toggles.RESET_RIGHT);
             tracker.currentLocation.X = Configurable.robotDepth / 2;
             tracker.currentLocation.Y = Configurable.robotHeight / 2 + Configurable.centerToShooter;
-            tracker.currentLocation.Z = 700 - Configurable.compressorLength; // subtract compressor
+            tracker.currentLocation.Z = 700 - Configurable.compressorLength - Configurable.robotWidth / 2; // subtract compressor
             telemetry.speak("Reset Right");
         }
     }
@@ -428,19 +435,22 @@ public class DriveNew extends LinearOpMode {
     public void runOpMode() {
         initSelf();
         waitForStart();
+
+        new Thread(() -> { while(opModeIsActive()) {
+            toggles();
+            drive(gamepad1.left_stick_y, -gamepad1.right_stick_x);
+//            drive(gamepad1.left_stick_y * Configurable.forwardPowerFactor, Range.clip(-gamepad1.right_stick_x, -0.7, 0.7) * Configurable.turnPowerFactor);
+        }}).start();
+
         while (opModeIsActive()) {
             vectorControl();
             track();
 
-            toggles();
-
-            drive(gamepad1.left_stick_y * Configurable.forwardPowerFactor, -gamepad1.right_stick_x * Configurable.turnPowerFactor);
             shooter();
             conveyor();
             collector();
             hook();
             slide();
-//            faceTarget();
 
             logging();
         }
