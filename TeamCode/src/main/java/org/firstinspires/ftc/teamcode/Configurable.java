@@ -26,7 +26,7 @@ public class Configurable {
 
     public static double SHOOTING_CIRCLE_RADIUS = 320;
 
-    public static double paragondas = 1.735;
+    public static double paragondas = 1.725;
     public static double shooterWheelRadiusStart = 2.5;
     public static double shooterWheelMaxExpansion = 2;
     public static double shooterGearRatio = 90.0 / 30.0;

@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode;
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.qualcomm.hardware.bosch.BNO055IMU;
+import com.qualcomm.hardware.bosch.NaiveAccelerationIntegrator;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -16,6 +17,10 @@ import com.z3db0y.davidlib.LocationTracker;
 import com.z3db0y.davidlib.Logger;
 import com.z3db0y.davidlib.Motor;
 import com.z3db0y.davidlib.Vector;
+
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Position;
+import org.firstinspires.ftc.robotcore.external.navigation.Velocity;
 
 import java.util.*;
 
@@ -167,6 +172,7 @@ public class DriveNew extends LinearOpMode {
         parameters.angleUnit = BNO055IMU.AngleUnit.DEGREES;
         parameters.accelUnit = BNO055IMU.AccelUnit.METERS_PERSEC_PERSEC;
         imu.initialize(parameters);
+        imu.startAccelerationIntegration(new Position(DistanceUnit.CM, 0, 0, 0, System.nanoTime()), new Velocity(), 1);
     }
 
     void initSelf() {
@@ -183,11 +189,15 @@ public class DriveNew extends LinearOpMode {
 
     void track() {
         currentAngle = imu.getAngularOrientation().firstAngle;
-        double averageVelo = (motors.get("leftSide").getMotorType().getAchieveableMaxTicksPerSecond() * motors.get("leftSide").getPower()) +
+        double motorAverageVelo = (motors.get("leftSide").getMotorType().getAchieveableMaxTicksPerSecond() * motors.get("leftSide").getPower()) +
                 (motors.get("rightSide").getMotorType().getAchieveableMaxTicksPerSecond() * motors.get("rightSide").getPower()) / 2;
         double xVelo = -imu.getAngularVelocity().xRotationRate/(2 * Math.PI) * Configurable.motorTicksPerRevolution;
         Logger.addDataDashboard("xVelo", xVelo);
-        Logger.addDataDashboard("averageVelo", averageVelo);
+        Logger.addDataDashboard("averageVelo", motorAverageVelo);
+        if(Math.abs(xVelo) < Math.abs(motorAverageVelo)) return;
+        double leftPower = motors.get("leftSide").getPower();
+        double rightPower = motors.get("rightSide").getPower();
+        if(leftPower > 0 && rightPower < 0 || leftPower < 0 && rightPower > 0) return;
         tracker.updatePosition(currentAngle);
     }
 
@@ -229,7 +239,7 @@ public class DriveNew extends LinearOpMode {
     void shooter() {
 
         if(gamepad2.left_stick_y > 0.1){
-            double input = gamepad2.left_stick_y * 17;
+            double input = gamepad2.left_stick_y * 20;
             Logger.addDataDashboard("Controlled Velo: ", input);
             double velocity = (Math.round(input) * 100) / (2 * Math.PI * Configurable.shooterWheelRadiusStart) * (28 / Configurable.shooterGearRatio);
             Logger.addDataDashboard("Rounded controlled velo: ", velocity);
@@ -280,7 +290,7 @@ public class DriveNew extends LinearOpMode {
         double shooterWheelRadius = shooterWheelRadiusStart + (shooterWheelMaxExpansion * Math.abs(motors.get("shooterUp").getVelocity()) / motors.get("shooterUp").getMotorType().getAchieveableMaxTicksPerSecond());
 
         double verticalDistanceToTarget = (sinkCenterLocation.Y - tracker.currentLocation.Y + Configurable.ballDiameter) / 100; //maybe add 60/2??? and not Configurable.ballDiameter
-        double horizontalDistanceToTarget = (tracker.distanceTo(sinkCenterLocation) - 60) / 100;
+        double horizontalDistanceToTarget = tracker.distanceTo(sinkCenterLocation) / 100;
 
         double angleToTarget = Configurable.shooterAngle;
         double gravity = Math.sqrt(
