@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.Testing;
 
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -13,6 +14,7 @@ import org.firstinspires.ftc.teamcode.Configurable;
 import java.util.Arrays;
 import java.util.HashMap;
 
+@Disabled
 @TeleOp(name = "TurnTest", group = "FGC22")
 public class TurnTest extends LinearOpMode {
 

@@ -22,11 +22,11 @@ public class Configurable {
     public static double robotDepth = 30;
     public static double robotHeight = 50;
 
-    public static double centerToShooter = 13.5;
+    public static double centerToShooter = 10;
 
-    public static double SHOOTING_CIRCLE_RADIUS = 320;
+    public static double SHOOTING_CIRCLE_RADIUS = 335;
 
-    public static double paragondas = 1.725;
+    public static double paragondas = 1.68;
     public static double shooterWheelRadiusStart = 2.5;
     public static double shooterWheelMaxExpansion = 2;
     public static double shooterGearRatio = 90.0 / 30.0;
@@ -38,6 +38,9 @@ public class Configurable {
     public static Vector sinkCenterLocation = new Vector(300, 250, 350);
     public static double compressorLength = 37.5;
 
-    public static double forwardPowerFactor = 1;
-    public static double turnPowerFactor = 1;
+    public static double forwardPowerFactor = 0.35;
+    public static double turnPowerFactor = 0.55;
+
+    public static double centerShotVelo1 = 640;
+    public static double centerShotVelo2 = 640;
 }

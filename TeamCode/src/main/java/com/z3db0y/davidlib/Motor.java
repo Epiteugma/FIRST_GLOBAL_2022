@@ -4,6 +4,7 @@ import com.qualcomm.robotcore.hardware.DcMotorImplEx;
 
 public class Motor extends DcMotorImplEx {
     boolean hold = false;
+    boolean inHoldState = false;
     double power = 0;
     double lastPowerUpdate;
     RunMode runMode = RunMode.RUN_WITHOUT_ENCODER;
@@ -13,12 +14,19 @@ public class Motor extends DcMotorImplEx {
     }
 
     public void holdPosition() {
-        if(hold && this.getPower() == 0) {
-            System.out.println("holdPos true");
-            this.setTargetPosition(this.getCurrentPosition());
-            super.setMode(RunMode.RUN_TO_POSITION);
-            super.setPower(1);
+        System.out.println("Hold: " + hold);
+        System.out.println("power: " + power);
+        System.out.println("inHoldState: " + inHoldState);
+        if(hold && this.power == 0) {
+            if(!inHoldState) {
+                System.out.println("holdPos true");
+                super.setTargetPosition(super.getCurrentPosition());
+                super.setMode(RunMode.RUN_TO_POSITION);
+                super.setPower(1);
+                inHoldState = true;
+            }
         } else {
+            inHoldState = false;
             super.setMode(this.runMode);
             super.setPower(power);
         }
@@ -37,7 +45,6 @@ public class Motor extends DcMotorImplEx {
 
     public void setMode(RunMode runMode) {
         this.runMode = runMode;
-        super.setMode(runMode);
         holdPosition();
     }
 
@@ -50,7 +57,7 @@ public class Motor extends DcMotorImplEx {
     }
 
     public double getPower() {
-        return power;
+        return this.power;
     }
 
     public boolean isStalled() {
